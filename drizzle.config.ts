@@ -1,8 +1,7 @@
 import type { Config } from "drizzle-kit"
 import * as dotenv from "dotenv"
 
-// Load .env.local first (for Next.js convention), then fall back to .env
-dotenv.config({ path: ".env.local" })
+// Load .env
 dotenv.config()
 
 if (!process.env.DATABASE_URL) {

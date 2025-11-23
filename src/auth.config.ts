@@ -1,12 +1,6 @@
 import type { NextAuthConfig } from "next-auth"
 import Google from "next-auth/providers/google"
 import GitHub from "next-auth/providers/github"
-import Credentials from "next-auth/providers/credentials"
-import { z } from "zod"
-import bcrypt from "bcryptjs"
-import { db } from "@/lib/db"
-import { users } from "@/lib/db/schema"
-import { eq } from "drizzle-orm"
 
 export const authConfig = {
   pages: {
@@ -70,36 +64,6 @@ export const authConfig = {
     GitHub({
       clientId: process.env.GITHUB_CLIENT_ID,
       clientSecret: process.env.GITHUB_CLIENT_SECRET,
-    }),
-    Credentials({
-      async authorize(credentials) {
-        const parsedCredentials = z
-          .object({ email: z.string().email(), password: z.string().min(8) })
-          .safeParse(credentials)
-
-        if (!parsedCredentials.success) return null
-
-        const { email, password } = parsedCredentials.data
-
-        // Find user in database
-        const [user] = await db.select().from(users).where(eq(users.email, email))
-
-        if (!user) return null
-
-        // Verify password
-        const passwordsMatch = await bcrypt.compare(password, user.passwordHash)
-
-        if (!passwordsMatch) return null
-
-        // Return user object (without password hash)
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          subscriptionTier: user.subscriptionTier,
-          subscriptionStatus: user.subscriptionStatus ?? undefined,
-        }
-      },
     }),
   ],
 } satisfies NextAuthConfig

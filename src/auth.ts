@@ -10,7 +10,7 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
   secret: process.env.AUTH_SECRET,
   callbacks: {
     ...authConfig.callbacks,
-    async signIn({ user, account }) {
+    async signIn({ account }) {
       // Allow OAuth sign-ins
       if (account?.provider === "google" || account?.provider === "github") {
         return true
