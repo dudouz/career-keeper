@@ -8,6 +8,7 @@ node_modules/
 # AI Tools 
 .taskmaster/
 **/*.md
+!/README.md
 **/*.mdc
 
 
