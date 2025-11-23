@@ -1,7 +1,8 @@
 import { auth } from "@/auth"
 
-export default auth((_req) => {
-  // Add any custom middleware logic here if needed
+export default auth(() => {
+  // The authorized callback in auth.config.ts handles redirects
+  // This middleware runs on every request matched by the config below
 })
 
 export const config = {
