@@ -1,4 +1,4 @@
-# Career Keeper v2
+# Career Keeper
 
 **AI-Powered Resume Builder from GitHub Contributions**
 
@@ -55,7 +55,7 @@ Career Keeper solves a common problem: developers struggle to keep their resumes
   - Onboarding flow for new users
 
 - ✅ **Security & Privacy**
-  - API keys stored in session only (never persisted)
+  - API keys encrypted in database
   - Encrypted data at rest
   - Rate limiting
   - Protected API routes
@@ -169,7 +169,7 @@ pnpm install
 
 3. **Environment Setup**
 
-Create a `.env.local` file in the project root:
+Create a `.env` file in the project root:
 
 ```bash
 # Database (Required)
@@ -195,7 +195,7 @@ GITHUB_CLIENT_SECRET=your-github-secret
 **Important Security Notes:**
 - GitHub PAT and OpenAI API keys are **NOT** stored in `.env`
 - Users provide these directly in the app UI
-- Keys are stored in session only (never persisted to database)
+- Keys are encrypted and stored securely in the database
 - This ensures users maintain control of their sensitive credentials
 
 For detailed OAuth setup instructions, see [docs/ENVIRONMENT_SETUP.md](docs/ENVIRONMENT_SETUP.md)
@@ -345,12 +345,11 @@ See [README.Docker.md](README.Docker.md) and [DOCKER_STARTUP.md](DOCKER_STARTUP.
 
 Career Keeper uses a unique security approach for sensitive API keys:
 
-- **GitHub PAT & OpenAI API Keys:** Never stored in database
-- **Session-Only Storage:** Keys exist only during user session
+- **GitHub PAT & OpenAI API Keys:** Encrypted and stored securely in database
 - **User Control:** Users provide and control their own keys
-- **Encryption:** Keys encrypted in session storage
+- **Encryption:** Strong encryption for all sensitive data at rest
 - **Proxy Pattern:** All API calls proxied through Next.js routes
-- **Automatic Cleanup:** Keys cleared on logout or session expiration
+- **Access Control:** Keys only accessible by the owning user
 
 ## 📊 Database Schema
 
