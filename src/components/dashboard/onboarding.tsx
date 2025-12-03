@@ -1,83 +1,63 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowRight, Zap } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useGitHubStatusQuery, useOpenAIKeyStatusQuery, useResumesQuery } from "@/lib/api/queries"
+import {
+  ArrowRight,
+  Check,
+  FileText,
+  Key,
+  Link2,
+  RefreshCw,
+  Sparkles,
+  Wand2,
+  X,
+  Zap,
+} from "lucide-react"
+import Link from "next/link"
+import { useState } from "react"
 
 export function OnboardingCard() {
   const [dismissed, setDismissed] = useState(false)
-  const [resumes, setResumes] = useState<unknown[] | null>(null)
-  const [githubStatus, setGithubStatus] = useState<{ connected: boolean } | null>(null)
-  const [hasOpenAIKey, setHasOpenAIKey] = useState(false)
 
-  // TODO: Replace with react query
-  useEffect(() => {
-    async function checkStatus() {
-      try {
-        // Check GitHub status
-        const githubResponse = await fetch("/api/github/status")
-        if (githubResponse.ok) {
-          const githubData = await githubResponse.json()
-          setGithubStatus(githubData)
-        }
-
-        // Check OpenAI key in database
-        const openaiResponse = await fetch("/api/openai/key")
-        if (openaiResponse.ok) {
-          const openaiData = await openaiResponse.json()
-          setHasOpenAIKey(openaiData.hasKey || false)
-        }
-
-        // Check if user has uploaded a resume
-        const resumeResponse = await fetch("/api/resume/upload")
-        if (resumeResponse.ok) {
-          const resumeData = await resumeResponse.json()
-          setResumes(resumeData.resumes || [])
-        }
-      } catch (error) {
-        console.error("Failed to check status:", error)
-        setGithubStatus({ connected: false })
-        setHasOpenAIKey(false)
-        setResumes([])
-      }
-    }
-    
-    checkStatus()
-  }, [])
+  // Use React Query hooks for data fetching
+  const { data: githubStatus } = useGitHubStatusQuery()
+  const { data: openaiKeyStatus } = useOpenAIKeyStatusQuery()
+  const { data: resumesData } = useResumesQuery()
 
   // TODO: Replace with local storage key check / or if all steps are completed, set a local storage key
   if (dismissed) return null
 
   // Derive completion status from actual data
   const hasGithub = githubStatus?.connected ?? false
-  const hasResume = resumes !== null && resumes.length > 0
+  const hasOpenAIKey = openaiKeyStatus?.hasKey ?? false
+  const resumes = resumesData?.resumes ?? []
+  const hasResume = resumes.length > 0
 
-  // TODO: Use lucide icons
   const steps = [
     {
       id: "github",
       title: "GitHub PAT",
-      icon: "🔗",
+      icon: Link2,
       completed: hasGithub,
     },
     {
       id: "openai",
       title: "OpenAI Key",
-      icon: "🔑",
+      icon: Key,
       completed: hasOpenAIKey,
     },
     {
       id: "resume",
       title: "Resume Upload",
-      icon: "📄",
+      icon: FileText,
       completed: hasResume,
     },
   ]
 
-  const completedCount = steps.filter(s => s.completed).length
+  const completedCount = steps.filter((s) => s.completed).length
   const allComplete = completedCount === steps.length
 
   return (
@@ -85,7 +65,7 @@ export function OnboardingCard() {
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
+            <div className="mb-2 flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
                 <Zap className="h-5 w-5 text-primary" />
               </div>
@@ -96,79 +76,97 @@ export function OnboardingCard() {
                 </Badge>
               </div>
             </div>
-            <CardDescription className="text-base mt-2">
-              {allComplete 
-                ? "🎉 All set! You can review your setup anytime."
-                : "Complete a guided 3-step wizard to unlock all features"}
+            <CardDescription className="mt-2 flex items-center gap-2 text-base">
+              {allComplete ? (
+                <>
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <span>All set! You can review your setup anytime.</span>
+                </>
+              ) : (
+                "Complete a guided 3-step wizard to unlock all features"
+              )}
             </CardDescription>
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setDismissed(true)}
-            className="text-muted-foreground hover:text-foreground shrink-0"
+            className="shrink-0 text-muted-foreground hover:text-foreground"
           >
-            ✕
+            <X className="h-4 w-4" />
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="flex w-full flex-col space-y-4">
         {/* Progress Steps */}
-        <div className="flex items-center justify-between gap-2">
+        <div className="justify- mb-4 flex w-full items-center">
           {steps.map((step, idx) => (
-            <div key={step.id} className="flex items-center gap-2 flex-1">
+            <div key={step.id} className="flex flex-1 items-center">
               <div
-                className={`flex items-center justify-center h-10 w-10 rounded-full border-2 transition-all ${
+                className={`h-[2px] flex-1 transition-colors ${
+                  step.completed ? "bg-green-500" : "bg-muted-foreground/20"
+                }`}
+              />
+              <div
+                className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all ${
                   step.completed
-                    ? "bg-green-500 border-green-500 text-white"
-                    : "bg-muted border-muted-foreground/30 text-muted-foreground"
+                    ? "border-green-500 bg-green-500 text-white"
+                    : "border-muted-foreground/30 bg-muted text-muted-foreground"
                 }`}
               >
                 {step.completed ? (
-                  <span className="text-lg">✓</span>
+                  <Check className="h-5 w-5" />
                 ) : (
                   <span className="text-sm font-bold">{idx + 1}</span>
                 )}
               </div>
-              {idx < steps.length - 1 && (
-                <div
-                  className={`h-[2px] flex-1 transition-colors ${
-                    step.completed ? "bg-green-500" : "bg-muted-foreground/20"
-                  }`}
-                />
-              )}
+
+              <div
+                className={`h-[2px] flex-1 transition-colors ${
+                  step.completed ? "bg-green-500" : "bg-muted-foreground/20"
+                }`}
+              />
             </div>
           ))}
         </div>
 
         {/* Step Labels */}
         <div className="flex justify-between text-xs text-muted-foreground">
-          {steps.map((step) => (
-            <div key={step.id} className="flex flex-col items-center gap-1" style={{ width: "33%" }}>
-              <span>{step.icon}</span>
-              <span className="text-center">{step.title}</span>
-            </div>
-          ))}
+          {steps.map((step) => {
+            const Icon = step.icon
+            return (
+              <div
+                key={step.id}
+                className="flex flex-col items-center gap-1"
+                style={{ width: "33%" }}
+              >
+                <Icon className="h-5 w-5" />
+                <span className="text-center">{step.title}</span>
+              </div>
+            )
+          })}
         </div>
 
         {/* CTA Button */}
         <div className="pt-2">
-          <Button asChild className="w-full h-12 text-base font-semibold" size="lg">
+          <Button asChild className="h-12 w-full text-base font-semibold" size="lg">
             <Link href="/dashboard/onboarding" className="flex items-center justify-center gap-2">
               {allComplete ? (
                 <>
-                  🔄 Review Your Setup
+                  <RefreshCw className="h-4 w-4" />
+                  Review Your Setup
                   <ArrowRight className="h-4 w-4" />
                 </>
               ) : (
                 <>
-                  🧙‍♂️ Start Guided Wizard
+                  <Wand2 className="h-4 w-4" />
+                  Start Guided Wizard
                   <ArrowRight className="h-4 w-4" />
                 </>
               )}
             </Link>
           </Button>
-          <p className="text-xs text-center text-muted-foreground mt-2">
+          <p className="mt-2 text-center text-xs text-muted-foreground">
             Takes ~2 minutes • Step-by-step guidance included
           </p>
         </div>
@@ -176,4 +174,3 @@ export function OnboardingCard() {
     </Card>
   )
 }
-
