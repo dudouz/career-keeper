@@ -122,6 +122,7 @@ Career Keeper solves a common problem: developers struggle to keep their resumes
 ## 🛠️ Tech Stack
 
 ### Frontend
+
 - **Framework:** Next.js 14+ (App Router)
 - **Language:** TypeScript
 - **Styling:** Tailwind CSS
@@ -129,16 +130,19 @@ Career Keeper solves a common problem: developers struggle to keep their resumes
 - **Icons:** Lucide React
 
 ### Backend
+
 - **API:** Next.js API Routes
 - **Database:** PostgreSQL
 - **ORM:** Drizzle ORM
 - **Authentication:** NextAuth.js v5
 
 ### External Integrations
+
 - **GitHub API:** Repository and contribution data
 - **OpenAI API:** GPT-4 for resume analysis and generation
 
 ### Development Tools
+
 - **Package Manager:** pnpm
 - **Testing:** Vitest + React Testing Library
 - **Code Quality:** ESLint + Prettier
@@ -148,7 +152,7 @@ Career Keeper solves a common problem: developers struggle to keep their resumes
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - pnpm (or npm/yarn)
 - PostgreSQL database
 - GitHub OAuth App credentials
@@ -157,12 +161,14 @@ Career Keeper solves a common problem: developers struggle to keep their resumes
 ### Installation
 
 1. **Clone the repository**
+
 ```bash
 git clone https://github.com/yourusername/career-keeper-v2.git
 cd career-keeper-v2
 ```
 
 2. **Install dependencies**
+
 ```bash
 pnpm install
 ```
@@ -193,6 +199,7 @@ GITHUB_CLIENT_SECRET=your-github-secret
 ```
 
 **Important Security Notes:**
+
 - GitHub PAT and OpenAI API keys are **NOT** stored in `.env`
 - Users provide these directly in the app UI
 - Keys are encrypted and stored securely in the database
@@ -201,6 +208,7 @@ GITHUB_CLIENT_SECRET=your-github-secret
 For detailed OAuth setup instructions, see [docs/ENVIRONMENT_SETUP.md](docs/ENVIRONMENT_SETUP.md)
 
 4. **Database Setup**
+
 ```bash
 # Generate migrations
 pnpm db:generate
@@ -210,6 +218,7 @@ pnpm db:push
 ```
 
 5. **Start Development Server**
+
 ```bash
 pnpm dev
 ```
@@ -289,6 +298,7 @@ pnpm test:coverage
 ```
 
 **Test Coverage:**
+
 - Unit tests for utilities and helpers
 - Component tests with React Testing Library
 - API route tests with MSW (Mock Service Worker)
@@ -297,6 +307,7 @@ pnpm test:coverage
 ## 📜 Available Scripts
 
 ### Development
+
 - `pnpm dev` - Start development server (http://localhost:3000)
 - `pnpm build` - Build for production
 - `pnpm start` - Start production server
@@ -304,12 +315,14 @@ pnpm test:coverage
 - `pnpm format` - Format code with Prettier
 
 ### Database
+
 - `pnpm db:generate` - Generate Drizzle migrations
 - `pnpm db:push` - Push schema changes to database
 - `pnpm db:migrate` - Run migrations
 - `pnpm db:studio` - Open Drizzle Studio GUI (visual database editor)
 
 ### Testing
+
 - `pnpm test` - Run tests in watch mode
 - `pnpm test:run` - Run tests once
 - `pnpm test:ui` - Run tests with interactive UI
@@ -368,6 +381,7 @@ See [src/lib/db/schema.ts](src/lib/db/schema.ts) for complete schema definition.
 ## 🗺️ Roadmap
 
 ### Current (MVP - Phase 1) ✅
+
 - Basic authentication
 - GitHub integration
 - Resume upload & parsing
@@ -377,6 +391,7 @@ See [src/lib/db/schema.ts](src/lib/db/schema.ts) for complete schema definition.
 - Basic insights
 
 ### Coming Soon (Phase 2)
+
 - Rich text editor for resume editing
 - Section-based resume management
 - Version control for resumes
@@ -387,6 +402,7 @@ See [src/lib/db/schema.ts](src/lib/db/schema.ts) for complete schema definition.
 - Subscription billing (Basic/Premium tiers)
 
 ### Future (Phase 3+)
+
 - Multiple LLM provider support (Anthropic, Google)
 - ATS (Applicant Tracking System) optimization
 - Cover letter generation
@@ -459,4 +475,4 @@ For questions or issues:
 
 **Built with ❤️ by developers, for developers.**
 
-*Keep your resume as active as your GitHub profile!*
+_Keep your resume as active as your GitHub profile!_

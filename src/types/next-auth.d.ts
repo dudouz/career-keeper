@@ -33,4 +33,3 @@ declare module "next-auth/jwt" {
     subscriptionStatus?: string
   }
 }
-

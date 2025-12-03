@@ -26,14 +26,11 @@ export const authConfig = {
       }
       return true
     },
-    async jwt({ token, user, account, trigger }) {
+    async jwt({ token, user, account }) {
       // On sign in, fetch the database user ID
       if (user?.email) {
         try {
-          const [dbUser] = await db
-            .select()
-            .from(users)
-            .where(eq(users.email, user.email))
+          const [dbUser] = await db.select().from(users).where(eq(users.email, user.email))
 
           if (dbUser) {
             token.id = dbUser.id
@@ -42,7 +39,7 @@ export const authConfig = {
             token.image = dbUser.image
             token.subscriptionTier = dbUser.subscriptionTier || "basic"
             token.subscriptionStatus = dbUser.subscriptionStatus || "active"
-            
+
             // Store provider info
             if (account) {
               token.provider = account.provider
@@ -84,4 +81,3 @@ export const authConfig = {
     }),
   ],
 } satisfies NextAuthConfig
-

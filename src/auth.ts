@@ -13,15 +13,12 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
   secret: process.env.AUTH_SECRET,
   callbacks: {
     ...authConfig.callbacks,
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account }) {
       // Allow OAuth sign-ins
       if (account?.provider === "google" || account?.provider === "github") {
         try {
           // Check if user exists in database
-          const [existingUser] = await db
-            .select()
-            .from(users)
-            .where(eq(users.email, user.email!))
+          const [existingUser] = await db.select().from(users).where(eq(users.email, user.email!))
 
           if (!existingUser) {
             // Create new user record for OAuth users
@@ -58,4 +55,3 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
     },
   },
 })
-

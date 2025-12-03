@@ -11,6 +11,9 @@ node_modules/
 !/README.md
 **/*.mdc
 
+# App-related 
+resume-references/
+
 
 # Testing
 /coverage
