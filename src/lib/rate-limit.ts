@@ -1,6 +1,8 @@
 // Simple in-memory rate limiting
 // For production, use Redis or a dedicated rate limiting service
 
+// TODO: Understand the purpose of the rate limiter
+
 interface RateLimitStore {
   [key: string]: {
     count: number
@@ -68,4 +70,3 @@ export const apiLimiter = rateLimit({
   interval: 60 * 1000, // 1 minute
   maxRequests: 60, // 60 requests per minute
 })
-

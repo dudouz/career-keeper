@@ -9,6 +9,11 @@ import type { ResumeContent } from "@/lib/db/types"
 import { exportResumeToPDF } from "@/lib/export/pdf"
 import { exportResumeToTXT } from "@/lib/export/txt"
 
+// TODO: Use lucide icons
+// TODO: Extract page logic to a separate file
+// TODO: Use react query for the API calls / State management
+// TODO: Use zod/react hook form for the forms 
+
 interface Resume {
   id: string
   title: string

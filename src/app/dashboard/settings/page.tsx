@@ -1,5 +1,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
+// TODO: Use lucide icons
+// TODO: Extract page logic to a separate file
+
 export default function SettingsPage() {
   return (
     <div className="space-y-6">

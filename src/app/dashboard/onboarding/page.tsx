@@ -7,7 +7,20 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle2, Github, Upload, Sparkles, Key } from "lucide-react"
 
+// TODO: Should these steps be an enum?
+// TODO: Should we use a separate file for the consts, types etc?
+
 type WizardStep = "github" | "openai" | "resume" | "results"
+const steps = [
+  { id: "github" as WizardStep, title: "Connect GitHub", icon: Github },
+  { id: "openai" as WizardStep, title: "OpenAI API Key", icon: Key },
+  { id: "resume" as WizardStep, title: "Upload Resume", icon: Upload },
+  { id: "results" as WizardStep, title: "View Results", icon: Sparkles },
+]
+
+// TODO: Use lucide icons
+// TODO: Extract page logic to a separate file
+// TODO: Use react query for the API calls / State management
 
 export default function OnboardingPage() {
   const router = useRouter()
@@ -32,12 +45,6 @@ export default function OnboardingPage() {
   const [resumeError, setResumeError] = useState("")
   const [resumeId, setResumeId] = useState<string | null>(null)
 
-  const steps = [
-    { id: "github" as WizardStep, title: "Connect GitHub", icon: Github },
-    { id: "openai" as WizardStep, title: "OpenAI API Key", icon: Key },
-    { id: "resume" as WizardStep, title: "Upload Resume", icon: Upload },
-    { id: "results" as WizardStep, title: "View Results", icon: Sparkles },
-  ]
 
   // Check existing setup status on mount
   useEffect(() => {

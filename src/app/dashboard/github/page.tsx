@@ -7,6 +7,11 @@ import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import type { GitHubContributionData } from "@/lib/db/types"
 
+// TODO: Use lucide icons
+// TODO: Extract page logic to a separate file
+// TODO: Use react query for the API calls / State management
+// TODO: Use zod/react hook form for the forms 
+
 export default function GitHubPage() {
   const [token, setToken] = useState("")
   const [isConnecting, setIsConnecting] = useState(false)

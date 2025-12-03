@@ -8,6 +8,9 @@ import type {
   Release,
 } from "@/lib/db/types"
 
+// TODO: Not sure if we need a class, we can have some hooks for each method and leverage react query instead...
+// TODO: We also have some magic numbers, we should use a more consistent approach.
+
 export class GitHubClient {
   private octokit: Octokit
 
@@ -26,10 +29,10 @@ export class GitHubClient {
 
   async fetchContributions(): Promise<GitHubContributionData> {
     const username = await this.getUsername()
-    
+
     // Fetch repositories
     const repositories = await this.fetchRepositories(username)
-    
+
     // Fetch commits, PRs, issues, and releases for each repo
     const commits: Commit[] = []
     const pullRequests: PullRequest[] = []
@@ -37,7 +40,8 @@ export class GitHubClient {
     const releases: Release[] = []
     const languageStats: Record<string, number> = {}
 
-    for (const repo of repositories.slice(0, 10)) { // Limit to 10 repos for MVP
+    for (const repo of repositories.slice(0, 10)) {
+      // Limit to 10 repos for MVP
       // Count languages
       if (repo.language) {
         languageStats[repo.language] = (languageStats[repo.language] || 0) + 1
@@ -115,10 +119,7 @@ export class GitHubClient {
     }
   }
 
-  private async fetchPullRequests(
-    repoFullName: string,
-    username: string
-  ): Promise<PullRequest[]> {
+  private async fetchPullRequests(repoFullName: string, username: string): Promise<PullRequest[]> {
     try {
       const [owner, repo] = repoFullName.split("/")
       const { data } = await this.octokit.pulls.list({
@@ -206,4 +207,3 @@ export class GitHubClient {
     }
   }
 }
-

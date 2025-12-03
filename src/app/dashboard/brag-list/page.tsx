@@ -6,6 +6,10 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import type { GitHubContributionData } from "@/lib/db/types"
 
+// TODO: Use lucide icons
+// TODO: Extract page logic to a separate file
+// TODO: Use react query for the API calls / State management
+
 type ContributionType = "all" | "commit" | "pr" | "issue" | "release"
 type SortOrder = "newest" | "oldest" | "most-impact"
 

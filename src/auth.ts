@@ -4,6 +4,7 @@ import { db } from "./lib/db"
 import { users } from "./lib/db/schema"
 import { eq } from "drizzle-orm"
 
+// TODO: use a const for this 30 days max age
 export const { auth, signIn, signOut, handlers } = NextAuth({
   ...authConfig,
   session: {

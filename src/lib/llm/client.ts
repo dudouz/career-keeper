@@ -6,6 +6,9 @@ export interface LLMClientConfig {
   model?: string
 }
 
+// TODO: Not sure if we need a class, we can have some hooks for each method and leverage react query instead...
+// TODO: We also have some magic numbers, we should use a more consistent approach.
+
 export class LLMClient {
   private client: OpenAI
   private model: string
@@ -20,9 +23,7 @@ export class LLMClient {
   /**
    * Analyze GitHub contributions and extract resume-worthy achievements
    */
-  async analyzeContributions(
-    contributions: GitHubContributionData
-  ): Promise<{
+  async analyzeContributions(contributions: GitHubContributionData): Promise<{
     achievements: string[]
     skills: string[]
     projects: Array<{ name: string; description: string; highlights: string[] }>
@@ -35,10 +36,16 @@ Pull Requests: ${contributions.pullRequests.length}
 Issues: ${contributions.issues.length}
 
 Top repositories:
-${contributions.repositories.slice(0, 5).map(r => `- ${r.name}: ${r.description || 'No description'}`).join('\n')}
+${contributions.repositories
+  .slice(0, 5)
+  .map((r) => `- ${r.name}: ${r.description || "No description"}`)
+  .join("\n")}
 
 Recent commits:
-${contributions.commits.slice(0, 10).map(c => `- ${c.message}`).join('\n')}
+${contributions.commits
+  .slice(0, 10)
+  .map((c) => `- ${c.message}`)
+  .join("\n")}
 
 Extract:
 1. Key achievements (quantifiable when possible)
@@ -63,7 +70,8 @@ Return as JSON with this structure:
       messages: [
         {
           role: "system",
-          content: "You are a professional resume writer and career coach. Extract meaningful, quantifiable achievements from technical contributions.",
+          content:
+            "You are a professional resume writer and career coach. Extract meaningful, quantifiable achievements from technical contributions.",
         },
         {
           role: "user",
@@ -107,7 +115,9 @@ GitHub Activity:
 - ${contributions.pullRequests.length} pull requests
 - ${contributions.issues.length} issues resolved
 
-Top Skills: ${Object.keys(contributions.languages || {}).slice(0, 10).join(", ")}
+Top Skills: ${Object.keys(contributions.languages || {})
+      .slice(0, 10)
+      .join(", ")}
 
 Tone: ${tone} - ${toneGuidance[tone]}
 
@@ -126,7 +136,8 @@ Return as JSON:
       messages: [
         {
           role: "system",
-          content: "You are a professional resume writer. Create compelling, concise summaries that highlight achievements and skills.",
+          content:
+            "You are a professional resume writer. Create compelling, concise summaries that highlight achievements and skills.",
         },
         {
           role: "user",
@@ -161,7 +172,10 @@ ${existingResume}
 
 GITHUB CONTRIBUTIONS:
 - Repositories: ${contributions.repositories.length}
-- Recent commits: ${contributions.commits.slice(0, 5).map(c => c.message).join("; ")}
+- Recent commits: ${contributions.commits
+      .slice(0, 5)
+      .map((c) => c.message)
+      .join("; ")}
 - Pull requests: ${contributions.pullRequests.length}
 - Issues: ${contributions.issues.length}
 
@@ -182,7 +196,8 @@ Return as JSON:
       messages: [
         {
           role: "system",
-          content: "You are a resume optimization expert. Identify gaps between resumes and actual work to improve accuracy and impact.",
+          content:
+            "You are a resume optimization expert. Identify gaps between resumes and actual work to improve accuracy and impact.",
         },
         {
           role: "user",
@@ -205,4 +220,3 @@ Return as JSON:
     return Math.ceil(text.length / 4)
   }
 }
-

@@ -13,6 +13,7 @@ export function OnboardingCard() {
   const [githubStatus, setGithubStatus] = useState<{ connected: boolean } | null>(null)
   const [hasOpenAIKey, setHasOpenAIKey] = useState(false)
 
+  // TODO: Replace with react query
   useEffect(() => {
     async function checkStatus() {
       try {
@@ -47,12 +48,14 @@ export function OnboardingCard() {
     checkStatus()
   }, [])
 
+  // TODO: Replace with local storage key check / or if all steps are completed, set a local storage key
   if (dismissed) return null
 
   // Derive completion status from actual data
   const hasGithub = githubStatus?.connected ?? false
   const hasResume = resumes !== null && resumes.length > 0
 
+  // TODO: Use lucide icons
   const steps = [
     {
       id: "github",

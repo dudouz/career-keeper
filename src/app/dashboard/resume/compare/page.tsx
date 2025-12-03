@@ -7,6 +7,10 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import type { GitHubContributionData } from "@/lib/db/types"
 
+// TODO: Use lucide icons
+// TODO: Extract page logic to a separate file
+// TODO: Use react query for the API calls / State management
+
 interface ComparisonData {
   missingAchievements: string[]
   outdatedSections: string[]

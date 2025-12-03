@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
+// TODO: Use lucide icons
+// TODO: Also extract page logic to a separate file
 export default function LandingPage() {
   return (
     <div className="flex flex-col min-h-screen">

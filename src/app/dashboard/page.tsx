@@ -6,6 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 
+// TODO: Use lucide icons
+// TODO: Extract page logic to a separate file
+
 export default async function DashboardPage() {
   const session = await auth()
 

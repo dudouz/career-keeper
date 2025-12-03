@@ -26,6 +26,7 @@ export const authConfig = {
       }
       return true
     },
+    // TODO: Verify if we are indeed saving the session user in the db as well, since we got separate models for accounts and users
     async jwt({ token, user, account }) {
       // On sign in, fetch the database user ID
       if (user?.email) {

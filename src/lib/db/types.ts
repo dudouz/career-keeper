@@ -4,22 +4,25 @@ import type {
   resumes,
   resumeVersions,
   githubContributions,
-  userSessions,
+  // userSessions,
 } from "./schema"
+
+// TODO: Should we type with a zod schema?
+// TODO: Should we extract this to separate files for each model/table?
 
 // Select types (reading from database)
 export type User = InferSelectModel<typeof users>
 export type Resume = InferSelectModel<typeof resumes>
 export type ResumeVersion = InferSelectModel<typeof resumeVersions>
 export type GitHubContribution = InferSelectModel<typeof githubContributions>
-export type UserSession = InferSelectModel<typeof userSessions>
+// export type UserSession = InferSelectModel<typeof userSessions>
 
 // Insert types (writing to database)
 export type NewUser = InferInsertModel<typeof users>
 export type NewResume = InferInsertModel<typeof resumes>
 export type NewResumeVersion = InferInsertModel<typeof resumeVersions>
 export type NewGitHubContribution = InferInsertModel<typeof githubContributions>
-export type NewUserSession = InferInsertModel<typeof userSessions>
+// export type NewUserSession = InferInsertModel<typeof userSessions>
 
 // Subscription tiers
 export type SubscriptionTier = "basic" | "premium"
@@ -126,4 +129,3 @@ export interface Release {
   url: string
   downloadCount?: number
 }
-

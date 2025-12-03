@@ -5,6 +5,8 @@ interface ExportOptions {
   columnWidth?: number
 }
 
+// TODO: There are some magic numbers, we should use a more consistent approach.
+
 /**
  * Export resume content to plain text format
  */
@@ -141,15 +143,11 @@ export function exportResumeToTXT(
 
       text += `${edu.institution}\n`
 
-      const degreeText = edu.field
-        ? `${edu.degree} in ${edu.field}`
-        : edu.degree
+      const degreeText = edu.field ? `${edu.degree} in ${edu.field}` : edu.degree
       text += `  ${degreeText}\n`
 
       if (edu.endDate) {
-        const dateRange = edu.startDate
-          ? `${edu.startDate} - ${edu.endDate}`
-          : edu.endDate
+        const dateRange = edu.startDate ? `${edu.startDate} - ${edu.endDate}` : edu.endDate
         text += `  ${dateRange}\n`
       }
 
@@ -202,4 +200,3 @@ export function exportResumeToTXT(
   a.click()
   URL.revokeObjectURL(url)
 }
-

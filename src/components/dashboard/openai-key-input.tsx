@@ -30,10 +30,11 @@ export function OpenAIKeyInput({ onKeySubmit, isLoading = false }: OpenAIKeyInpu
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* We do store it now, but with encryption */}
+        {/* TODO: Use lucide icons */}
         <Alert>
           <AlertDescription className="text-sm">
-            🔒 <strong>Privacy Notice:</strong> Your API key is never stored in our database. 
-            It's only used during your current session and is never saved permanently.
+            🔒 <strong>Privacy Notice:</strong> Your API key encrypted and stored in our database. 
           </AlertDescription>
         </Alert>
 

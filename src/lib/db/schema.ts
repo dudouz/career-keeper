@@ -97,24 +97,25 @@ export const githubContributions = pgTable("github_contributions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 })
 
+// TODO: Check if this is needed
 // User Session model (for JWT/session-based auth)
-export const userSessions = pgTable("user_sessions", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  sessionToken: text("session_token").notNull().unique(),
-  githubPat: text("github_pat"), // Encrypted, session-only storage
-  openaiApiKey: text("openai_api_key"), // Encrypted, session-only storage
-  expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-})
+// export const userSessions = pgTable("user_sessions", {
+//   id: uuid("id").defaultRandom().primaryKey(),
+//   userId: uuid("user_id")
+//     .notNull()
+//     .references(() => users.id, { onDelete: "cascade" }),
+//   sessionToken: text("session_token").notNull().unique(),
+//   githubPat: text("github_pat"), // Encrypted, session-only storage
+//   openaiApiKey: text("openai_api_key"), // Encrypted, session-only storage
+//   expiresAt: timestamp("expires_at").notNull(),
+//   createdAt: timestamp("created_at").defaultNow().notNull(),
+// })
 
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   resumes: many(resumes),
   githubContributions: many(githubContributions),
-  sessions: many(userSessions),
+  // sessions: many(userSessions),
 }))
 
 export const resumesRelations = relations(resumes, ({ one, many }) => ({
@@ -139,10 +140,10 @@ export const githubContributionsRelations = relations(githubContributions, ({ on
   }),
 }))
 
-export const userSessionsRelations = relations(userSessions, ({ one }) => ({
-  user: one(users, {
-    fields: [userSessions.userId],
-    references: [users.id],
-  }),
-}))
-
+// TODO: Check if this is needed
+// export const userSessionsRelations = relations(userSessions, ({ one }) => ({
+//   user: one(users, {
+//     fields: [userSessions.userId],
+//     references: [users.id],
+//   }),
+// }))
