@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
-import { LLMClient } from "@/lib/llm/client"
-import { rateLimit } from "@/lib/rate-limit"
 import { db } from "@/lib/db"
 import { users } from "@/lib/db/schema"
-import { eq } from "drizzle-orm"
 import { decryptToken } from "@/lib/github/encryption"
+import { LLMClient } from "@/lib/llm/client"
+import { rateLimit } from "@/lib/rate-limit"
+import { eq } from "drizzle-orm"
+import { NextRequest, NextResponse } from "next/server"
 
 const limiter = rateLimit({
   interval: 60 * 1000, // 1 minute
@@ -49,10 +49,7 @@ export async function POST(req: NextRequest) {
     const { contributions } = body
 
     if (!contributions) {
-      return NextResponse.json(
-        { error: "GitHub contributions data is required" },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: "GitHub contributions data is required" }, { status: 400 })
     }
 
     // Create LLM client and analyze
@@ -78,23 +75,16 @@ export async function POST(req: NextRequest) {
     // Handle OpenAI specific errors
     if (error instanceof Error) {
       if (error.message.includes("API key")) {
-        return NextResponse.json(
-          { error: "Invalid OpenAI API key" },
-          { status: 401 }
-        )
+        return NextResponse.json({ error: "Invalid OpenAI API key" }, { status: 401 })
       }
       if (error.message.includes("quota")) {
         return NextResponse.json(
-          { error: "OpenAI API quota exceeded" },
+          { error: "OpenAI API quota exceeded", details: error.message },
           { status: 429 }
         )
       }
     }
 
-    return NextResponse.json(
-      { error: "Failed to analyze contributions" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Failed to analyze contributions" }, { status: 500 })
   }
 }
-

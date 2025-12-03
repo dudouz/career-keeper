@@ -24,23 +24,23 @@ import { useState } from "react"
 
 type Tone = "technical" | "leadership" | "hybrid"
 
-interface SummaryResult {
-  summary: string
-  alternatives: string[]
-}
-
 export function SummaryPage() {
   const { data: statusData } = useGitHubStatusQuery()
   const isConnected = statusData?.connected || false
   const { data: contributionsData, isLoading: loadingContributions } = useGitHubContributionsQuery({
     enabled: isConnected, // Only fetch when GitHub is connected
   })
-  // TODO: Destructure the data and loading,errors etc from the generateMutation obj
-  const generateMutation = useGenerateSummaryMutation()
+
+  const {
+    data: summaryData,
+    isPending: isGeneratingSummary,
+    isError: isGeneratingSummaryError,
+    error: generatingSummaryError,
+    mutate: generateSummary,
+  } = useGenerateSummaryMutation()
 
   const [currentSummary, setCurrentSummary] = useState("")
   const [tone, setTone] = useState<Tone>("hybrid")
-  const [result, setResult] = useState<SummaryResult | null>(null)
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
 
   const contributions = contributionsData?.contributions
@@ -50,18 +50,11 @@ export function SummaryPage() {
       return
     }
 
-    generateMutation.mutate(
-      {
-        contributions,
-        currentSummary: currentSummary || undefined,
-        tone,
-      },
-      {
-        onSuccess: (data) => {
-          setResult(data)
-        },
-      }
-    )
+    generateSummary({
+      contributions,
+      currentSummary: currentSummary || undefined,
+      tone,
+    })
   }
 
   const copyToClipboard = async (text: string, index: number) => {
@@ -110,7 +103,7 @@ export function SummaryPage() {
       </div>
 
       {/* Generator Card */}
-      {!result && (
+      {!summaryData && (
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
@@ -181,12 +174,12 @@ export function SummaryPage() {
               </AlertDescription>
             </Alert>
 
-            {generateMutation.isError && (
+            {isGeneratingSummaryError && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  {generateMutation.error instanceof Error
-                    ? generateMutation.error.message
+                  {generatingSummaryError instanceof Error
+                    ? generatingSummaryError.message
                     : "Failed to generate summary"}
                 </AlertDescription>
               </Alert>
@@ -195,19 +188,19 @@ export function SummaryPage() {
             {/* Generate Button */}
             <Button
               onClick={handleGenerate}
-              disabled={generateMutation.isPending || !contributions}
+              disabled={isGeneratingSummary || !contributions}
               className="w-full"
               size="lg"
             >
-              {generateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {generateMutation.isPending ? "Generating..." : "Generate Summary"}
+              {isGeneratingSummary && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isGeneratingSummary ? "Generating..." : "Generate Summary"}
             </Button>
           </CardContent>
         </Card>
       )}
 
       {/* Results */}
-      {result && (
+      {summaryData && (
         <>
           <Card>
             <CardHeader>
@@ -226,10 +219,10 @@ export function SummaryPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="rounded-lg bg-muted p-4">
-                <p className="text-sm leading-relaxed">{result.summary}</p>
+                <p className="text-sm leading-relaxed">{summaryData.summary}</p>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => copyToClipboard(result.summary, -1)}>
+                <Button variant="outline" onClick={() => copyToClipboard(summaryData.summary, -1)}>
                   {copiedIndex === -1 ? (
                     <>
                       <CheckCircle className="mr-2 h-4 w-4" />
@@ -256,7 +249,7 @@ export function SummaryPage() {
               <CardDescription>Try these variations for different emphasis</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {result.alternatives.map((alt, index) => (
+              {summaryData?.alternatives?.map((alt, index) => (
                 <div key={index} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Alternative {index + 1}</span>
@@ -285,19 +278,13 @@ export function SummaryPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex justify-center gap-4">
-                <Button
-                  onClick={() => {
-                    setResult(null)
-                  }}
-                  variant="outline"
-                >
+                <Button onClick={() => {}} variant="outline">
                   <RefreshCw className="mr-2 h-4 w-4" />
                   Generate New Summary
                 </Button>
                 <Button
                   onClick={() => {
-                    setCurrentSummary(result.summary)
-                    setResult(null)
+                    setCurrentSummary(summaryData.summary)
                   }}
                   variant="outline"
                 >

@@ -1,17 +1,19 @@
 "use client"
 
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import { signOut } from "next-auth/react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { signOut } from "next-auth/react"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/dashboard/github", label: "GitHub Scan" },
-  { href: "/dashboard/resume", label: "Resume" },
   { href: "/dashboard/brag-list", label: "Brag List" },
-  { href: "/dashboard/settings", label: "Settings" },
+  { href: "/dashboard/resume", label: "Resume" },
+  { href: "/dashboard/summary", label: "Summary" },
+  { href: "/dashboard/resume/compare", label: "Resume Compare" },
+  // { href: "/dashboard/settings", label: "Settings" },
 ]
 
 export function DashboardNav() {
@@ -30,9 +32,7 @@ export function DashboardNav() {
               href={item.href}
               className={cn(
                 "text-sm font-medium transition-colors hover:text-primary",
-                pathname === item.href
-                  ? "text-foreground"
-                  : "text-muted-foreground"
+                pathname === item.href ? "text-foreground" : "text-muted-foreground"
               )}
             >
               {item.label}
@@ -46,4 +46,3 @@ export function DashboardNav() {
     </nav>
   )
 }
-

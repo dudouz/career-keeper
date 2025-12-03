@@ -279,11 +279,13 @@ export function useGenerateSummaryMutation() {
         const error = await response.json()
         throw new Error(error.error || "Failed to generate summary")
       }
+      const data = await response.json()
 
-      return response.json() as Promise<{
+      // TODO: Fix this type properly
+      return data.data as {
         summary: string
         alternatives: string[]
-      }>
+      }
     },
     onSuccess: (data) => {
       queryClient.setQueryData(queryKeys.llm.summarize(), data)
