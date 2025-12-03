@@ -9,6 +9,9 @@ node_modules/
 .taskmaster/
 **/*.md
 !/README.md
+
+# Comment and uncomment this to enable/disable code review todos
+# !/CODE_REVIEW_TODOS.md
 **/*.mdc
 
 # App-related 

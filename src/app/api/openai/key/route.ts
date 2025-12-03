@@ -49,7 +49,6 @@ export async function POST(request: NextRequest) {
         name: session.user.name,
         image: session.user.image,
         emailVerified: new Date(),
-        passwordHash: null,
         openaiApiKey: encryptedKey,
         subscriptionTier: "basic",
         subscriptionStatus: "active",

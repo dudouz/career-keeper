@@ -3,13 +3,13 @@ import { authConfig } from "./auth.config"
 import { db } from "./lib/db"
 import { users } from "./lib/db/schema"
 import { eq } from "drizzle-orm"
+import { AUTH } from "./lib/constants"
 
-// TODO: use a const for this 30 days max age
 export const { auth, signIn, signOut, handlers } = NextAuth({
   ...authConfig,
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: AUTH.SESSION_MAX_AGE_SECONDS,
   },
   secret: process.env.AUTH_SECRET,
   callbacks: {

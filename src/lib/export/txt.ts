@@ -1,11 +1,10 @@
 import type { ResumeContent } from "@/lib/db/types"
+import { EXPORT } from "@/lib/constants"
 
 interface ExportOptions {
   includeGeneratedDate?: boolean
   columnWidth?: number
 }
-
-// TODO: There are some magic numbers, we should use a more consistent approach.
 
 /**
  * Export resume content to plain text format
@@ -15,7 +14,7 @@ export function exportResumeToTXT(
   fileName: string = "resume.txt",
   options: ExportOptions = {}
 ) {
-  const { includeGeneratedDate = true, columnWidth = 80 } = options
+  const { includeGeneratedDate = true, columnWidth = EXPORT.TXT.LINE_WIDTH } = options
 
   let text = ""
 

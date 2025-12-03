@@ -1,13 +1,12 @@
 import jsPDF from "jspdf"
 import type { ResumeContent } from "@/lib/db/types"
+import { EXPORT } from "@/lib/constants"
 
 interface ExportOptions {
   includeGeneratedDate?: boolean
   fontSize?: number
   lineHeight?: number
 }
-
-// TODO: There are some magic numbers, we should use a more consistent approach.
 
 /**
  * Export resume content to PDF format
@@ -17,7 +16,7 @@ export function exportResumeToPDF(
   fileName: string = "resume.pdf",
   options: ExportOptions = {}
 ) {
-  const { includeGeneratedDate = true, fontSize = 11, lineHeight = 6 } = options
+  const { includeGeneratedDate = true, fontSize = EXPORT.PDF.FONT_SIZES.BODY, lineHeight = EXPORT.PDF.LINE_HEIGHT } = options
 
   // Create new PDF document (A4 size)
   const doc = new jsPDF({
@@ -28,7 +27,7 @@ export function exportResumeToPDF(
 
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
-  const margin = 20
+  const margin = EXPORT.PDF.MARGIN
   const contentWidth = pageWidth - 2 * margin
   let currentY = margin
 

@@ -1,7 +1,16 @@
-// Simple in-memory rate limiting
-// For production, use Redis or a dedicated rate limiting service
-
-// TODO: Understand the purpose of the rate limiter
+/**
+ * Simple in-memory rate limiting utility
+ *
+ * Purpose: Prevents abuse and protects API endpoints by limiting the number of
+ * requests from a single identifier (e.g., IP address, user ID) within a time window.
+ *
+ * Use cases:
+ * - authLimiter: Protects authentication endpoints from brute force attacks
+ * - apiLimiter: Prevents API abuse by limiting general API requests
+ *
+ * Note: For production with multiple server instances, use Redis or a dedicated
+ * rate limiting service to share state across instances.
+ */
 
 interface RateLimitStore {
   [key: string]: {
