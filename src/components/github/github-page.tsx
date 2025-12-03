@@ -1,32 +1,46 @@
 "use client"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import Link from "next/link"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
-import { Github, GitBranch, GitPullRequest, Loader2, CheckCircle, AlertCircle, Tag } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import {
-  useGitHubStatusQuery,
   useConnectGitHubMutation,
   useGitHubContributionsQuery,
+  useGitHubStatusQuery,
   useScanGitHubContributionsMutation,
 } from "@/lib/api/queries"
 import type { GitHubContributionData } from "@/lib/db/types"
+import { zodResolver } from "@hookform/resolvers/zod"
+import {
+  AlertCircle,
+  CheckCircle,
+  GitBranch,
+  Github,
+  GitPullRequest,
+  Loader2,
+  Tag,
+} from "lucide-react"
+import Link from "next/link"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
 
 const tokenSchema = z.object({
-  token: z.string().min(1, "GitHub token is required").startsWith("ghp_", "Must be a valid GitHub Personal Access Token"),
+  token: z
+    .string()
+    .min(1, "GitHub token is required")
+    .startsWith("ghp_", "Must be a valid GitHub Personal Access Token"),
 })
 
 type TokenFormData = z.infer<typeof tokenSchema>
 
 export function GitHubPage() {
   const { data: statusData, isLoading: isCheckingStatus } = useGitHubStatusQuery()
-  const { data: contributionsData } = useGitHubContributionsQuery()
+  const isConnected = statusData?.connected || false
+  const { data: contributionsData } = useGitHubContributionsQuery({
+    enabled: isConnected, // Only fetch when GitHub is connected
+  })
   const connectMutation = useConnectGitHubMutation()
   const scanMutation = useScanGitHubContributionsMutation()
 
@@ -39,8 +53,8 @@ export function GitHubPage() {
     resolver: zodResolver(tokenSchema),
   })
 
-  const isConnected = statusData?.connected || false
-  const contributions = (scanMutation.data?.contributions || contributionsData?.contributions) as GitHubContributionData | null
+  const contributions = (scanMutation.data?.contributions ||
+    contributionsData?.contributions) as GitHubContributionData | null
 
   const onSubmit = async (data: TokenFormData) => {
     connectMutation.mutate(data.token, {
@@ -65,7 +79,7 @@ export function GitHubPage() {
         </div>
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
-            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+            <Loader2 className="mx-auto mb-4 h-12 w-12 animate-spin text-primary" />
             <p className="text-muted-foreground">Checking GitHub connection...</p>
           </div>
         </div>
@@ -86,7 +100,9 @@ export function GitHubPage() {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            {connectMutation.error instanceof Error ? connectMutation.error.message : "Failed to connect GitHub"}
+            {connectMutation.error instanceof Error
+              ? connectMutation.error.message
+              : "Failed to connect GitHub"}
           </AlertDescription>
         </Alert>
       )}
@@ -104,7 +120,9 @@ export function GitHubPage() {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            {scanMutation.error instanceof Error ? scanMutation.error.message : "Failed to scan GitHub"}
+            {scanMutation.error instanceof Error
+              ? scanMutation.error.message
+              : "Failed to scan GitHub"}
           </AlertDescription>
         </Alert>
       )}
@@ -112,9 +130,7 @@ export function GitHubPage() {
       {scanMutation.isSuccess && (
         <Alert className="border-green-200 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-900/20 dark:text-green-400">
           <CheckCircle className="h-4 w-4" />
-          <AlertDescription>
-            Successfully scanned your GitHub contributions!
-          </AlertDescription>
+          <AlertDescription>Successfully scanned your GitHub contributions!</AlertDescription>
         </Alert>
       )}
 
@@ -131,12 +147,16 @@ export function GitHubPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="rounded-lg bg-muted p-4 text-sm">
-              <p className="font-semibold mb-2">How to create a GitHub Personal Access Token:</p>
-              <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+              <p className="mb-2 font-semibold">How to create a GitHub Personal Access Token:</p>
+              <ol className="list-inside list-decimal space-y-1 text-muted-foreground">
                 <li>Go to GitHub Settings → Developer settings → Personal access tokens</li>
                 <li>Click "Generate new token (classic)"</li>
                 <li>Give it a name like "Career Keeper"</li>
-                <li>Select scopes: <code className="text-xs bg-background px-1 py-0.5 rounded">repo</code>, <code className="text-xs bg-background px-1 py-0.5 rounded">read:user</code></li>
+                <li>
+                  Select scopes:{" "}
+                  <code className="rounded bg-background px-1 py-0.5 text-xs">repo</code>,{" "}
+                  <code className="rounded bg-background px-1 py-0.5 text-xs">read:user</code>
+                </li>
                 <li>Click "Generate token" and copy it</li>
               </ol>
               <p className="mt-2 text-xs">
@@ -146,7 +166,7 @@ export function GitHubPage() {
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div>
-                <label htmlFor="token" className="block text-sm font-medium mb-2">
+                <label htmlFor="token" className="mb-2 block text-sm font-medium">
                   GitHub Personal Access Token
                 </label>
                 <Input
@@ -157,7 +177,7 @@ export function GitHubPage() {
                   {...register("token")}
                 />
                 {errors.token && (
-                  <p className="text-sm text-destructive mt-1">{errors.token.message}</p>
+                  <p className="mt-1 text-sm text-destructive">{errors.token.message}</p>
                 )}
               </div>
 

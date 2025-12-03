@@ -1,5 +1,5 @@
-import { pgTable, text, timestamp, uuid, jsonb, integer, boolean } from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
+import { boolean, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
 
 // User model - OAuth-only authentication
 export const users = pgTable("users", {
@@ -99,17 +99,17 @@ export const githubContributions = pgTable("github_contributions", {
 
 // TODO: Check if this is needed
 // User Session model (for JWT/session-based auth)
-// export const userSessions = pgTable("user_sessions", {
-//   id: uuid("id").defaultRandom().primaryKey(),
-//   userId: uuid("user_id")
-//     .notNull()
-//     .references(() => users.id, { onDelete: "cascade" }),
-//   sessionToken: text("session_token").notNull().unique(),
-//   githubPat: text("github_pat"), // Encrypted, session-only storage
-//   openaiApiKey: text("openai_api_key"), // Encrypted, session-only storage
-//   expiresAt: timestamp("expires_at").notNull(),
-//   createdAt: timestamp("created_at").defaultNow().notNull(),
-// })
+export const userSessions = pgTable("user_sessions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  sessionToken: text("session_token").notNull().unique(),
+  githubPat: text("github_pat"), // Encrypted, session-only storage
+  openaiApiKey: text("openai_api_key"), // Encrypted, session-only storage
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+})
 
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
@@ -141,9 +141,9 @@ export const githubContributionsRelations = relations(githubContributions, ({ on
 }))
 
 // TODO: Check if this is needed
-// export const userSessionsRelations = relations(userSessions, ({ one }) => ({
-//   user: one(users, {
-//     fields: [userSessions.userId],
-//     references: [users.id],
-//   }),
-// }))
+export const userSessionsRelations = relations(userSessions, ({ one }) => ({
+  user: one(users, {
+    fields: [userSessions.userId],
+    references: [users.id],
+  }),
+}))

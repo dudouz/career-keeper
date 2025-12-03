@@ -1,7 +1,13 @@
-import type { Config } from "drizzle-kit"
 import * as dotenv from "dotenv"
+import type { Config } from "drizzle-kit"
+import fs from "fs"
 
+// load .env.local if it exists
+if (fs.existsSync(".env.local")) {
+  dotenv.config({ path: ".env.local" })
+}
 // Load .env
+
 dotenv.config()
 
 if (!process.env.DATABASE_URL) {
@@ -16,4 +22,3 @@ export default {
     url: process.env.DATABASE_URL,
   },
 } satisfies Config
-

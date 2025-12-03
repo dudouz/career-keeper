@@ -5,7 +5,11 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
-import { useGenerateSummaryMutation, useGitHubContributionsQuery } from "@/lib/api/queries"
+import {
+  useGenerateSummaryMutation,
+  useGitHubContributionsQuery,
+  useGitHubStatusQuery,
+} from "@/lib/api/queries"
 import {
   AlertCircle,
   CheckCircle,
@@ -26,7 +30,11 @@ interface SummaryResult {
 }
 
 export function SummaryPage() {
-  const { data: contributionsData, isLoading: loadingContributions } = useGitHubContributionsQuery()
+  const { data: statusData } = useGitHubStatusQuery()
+  const isConnected = statusData?.connected || false
+  const { data: contributionsData, isLoading: loadingContributions } = useGitHubContributionsQuery({
+    enabled: isConnected, // Only fetch when GitHub is connected
+  })
   // TODO: Destructure the data and loading,errors etc from the generateMutation obj
   const generateMutation = useGenerateSummaryMutation()
 

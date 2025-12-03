@@ -3,9 +3,15 @@
  * All React Query operations are defined here for consistency and reusability
  */
 
-import { useMutation, useQuery, useQueryClient, UseMutationOptions, UseQueryOptions } from "@tanstack/react-query"
-import { validateGitHubToken, checkGitHubRateLimit } from "@/lib/github/service"
-import type { GitHubContributionData } from "@/lib/db/types"
+import type { GitHubContributionData, ResumeContent } from "@/lib/db/types"
+import { checkGitHubRateLimit, validateGitHubToken } from "@/lib/github/service"
+import {
+  useMutation,
+  UseMutationOptions,
+  useQuery,
+  useQueryClient,
+  UseQueryOptions,
+} from "@tanstack/react-query"
 
 // =============================================================================
 // QUERY KEYS
@@ -46,7 +52,9 @@ export const queryKeys = {
 /**
  * Fetch GitHub connection status
  */
-export function useGitHubStatusQuery(options?: Omit<UseQueryOptions<{ connected: boolean; username?: string }>, "queryKey" | "queryFn">) {
+export function useGitHubStatusQuery(
+  options?: Omit<UseQueryOptions<{ connected: boolean; username?: string }>, "queryKey" | "queryFn">
+) {
   return useQuery({
     queryKey: queryKeys.github.status(),
     queryFn: async () => {
@@ -62,8 +70,19 @@ export function useGitHubStatusQuery(options?: Omit<UseQueryOptions<{ connected:
 
 /**
  * Fetch GitHub contributions (cached from database)
+ * By default, this query is disabled to prevent automatic fetching.
+ * Pass `enabled: true` in options to enable automatic fetching.
  */
-export function useGitHubContributionsQuery(options?: Omit<UseQueryOptions<{ contributions: GitHubContributionData; lastScanned?: Date; scanCount?: number }>, "queryKey" | "queryFn">) {
+export function useGitHubContributionsQuery(
+  options?: Omit<
+    UseQueryOptions<{
+      contributions: GitHubContributionData
+      lastScanned?: Date
+      scanCount?: number
+    }>,
+    "queryKey" | "queryFn"
+  >
+) {
   return useQuery({
     queryKey: queryKeys.github.contributions(),
     queryFn: async () => {
@@ -88,6 +107,7 @@ export function useGitHubContributionsQuery(options?: Omit<UseQueryOptions<{ con
       }
       return response.json()
     },
+    enabled: false, // Opt-in: must explicitly enable to fetch
     ...options,
   })
 }
@@ -111,7 +131,9 @@ export function useGitHubRateLimitQuery(token: string, enabled = true) {
 /**
  * Validate GitHub token
  */
-export function useValidateGitHubTokenMutation(options?: UseMutationOptions<{ valid: boolean; username?: string; error?: string }, Error, string>) {
+export function useValidateGitHubTokenMutation(
+  options?: UseMutationOptions<{ valid: boolean; username?: string; error?: string }, Error, string>
+) {
   return useMutation({
     mutationFn: (token: string) => validateGitHubToken(token),
     ...options,
@@ -177,7 +199,9 @@ export function useScanGitHubContributionsMutation() {
 /**
  * Check if OpenAI API key is configured
  */
-export function useOpenAIKeyStatusQuery(options?: Omit<UseQueryOptions<{ hasKey: boolean }>, "queryKey" | "queryFn">) {
+export function useOpenAIKeyStatusQuery(
+  options?: Omit<UseQueryOptions<{ hasKey: boolean }>, "queryKey" | "queryFn">
+) {
   return useQuery({
     queryKey: queryKeys.openai.keyStatus(),
     queryFn: async () => {
@@ -376,7 +400,7 @@ export function useUploadResumeMutation() {
           title: string
           fileName: string
           fileType: string
-          content: any
+          content: ResumeContent
         }
         message: string
       }>

@@ -26,7 +26,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile.dev  # Volte para Dockerfile.dev
     container_name: career-keeper-app
     restart: unless-stopped
     ports:
@@ -34,15 +34,14 @@ services:
     volumes:
       # Mount source code for hot reload
       - .:/app
-      # Use named volumes so they can be easily cleared
-      - node_modules:/app/node_modules
-      - next_cache:/app/.next
+      - /app/node_modules
+      - /app/.next
     env_file:
       - .env
     environment:
       # Override DATABASE_URL to use Docker network
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/career_keeper
-      
+
       # Next.js
       NODE_ENV: development
       NEXT_TELEMETRY_DISABLED: 1
@@ -58,8 +57,4 @@ networks:
 
 volumes:
   postgres_data:
-    driver: local
-  node_modules:
-    driver: local
-  next_cache:
     driver: local

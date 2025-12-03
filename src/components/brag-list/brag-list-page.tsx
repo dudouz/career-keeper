@@ -1,30 +1,34 @@
 "use client"
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { useGitHubContributionsQuery, useGitHubStatusQuery } from "@/lib/api/queries"
 import {
-  Sparkles,
+  AlertCircle,
+  Code2,
+  ExternalLink,
+  FileDown,
+  FileText,
   GitCommit,
   GitPullRequest,
-  AlertCircle,
-  FileDown,
-  Search,
-  ExternalLink,
-  Code2,
   Loader2,
-  FileText,
   Rocket,
+  Search,
+  Sparkles,
 } from "lucide-react"
-import { useGitHubContributionsQuery } from "@/lib/api/queries"
+import { useState } from "react"
 
 type ContributionType = "all" | "commit" | "pr" | "issue" | "release"
 type SortOrder = "newest" | "oldest" | "most-impact"
 
 export function BragListPage() {
-  const { data, isLoading } = useGitHubContributionsQuery()
+  const { data: statusData } = useGitHubStatusQuery()
+  const isConnected = statusData?.connected || false
+  const { data, isLoading } = useGitHubContributionsQuery({
+    enabled: isConnected, // Only fetch when GitHub is connected
+  })
   const contributions = data?.contributions
 
   const [filter, setFilter] = useState<ContributionType>("all")
@@ -53,10 +57,10 @@ export function BragListPage() {
           date: c.date,
           repository: c.repository,
           url: c.url,
-          significance: c.message.toLowerCase().includes("feat") ||
-            c.message.toLowerCase().includes("feature")
-            ? ("high" as const)
-            : ("low" as const),
+          significance:
+            c.message.toLowerCase().includes("feat") || c.message.toLowerCase().includes("feature")
+              ? ("high" as const)
+              : ("low" as const),
         }))
       )
     }
@@ -139,11 +143,14 @@ export function BragListPage() {
     let markdown = "# My Brag List\n\n"
     markdown += `Generated on ${new Date().toLocaleDateString()}\n\n`
 
-    const groupedByType = items.reduce((acc, item) => {
-      if (!acc[item.type]) acc[item.type] = []
-      acc[item.type].push(item)
-      return acc
-    }, {} as Record<string, typeof items>)
+    const groupedByType = items.reduce(
+      (acc, item) => {
+        if (!acc[item.type]) acc[item.type] = []
+        acc[item.type].push(item)
+        return acc
+      },
+      {} as Record<string, typeof items>
+    )
 
     Object.entries(groupedByType).forEach(([type, typeItems]) => {
       markdown += `## ${type.toUpperCase()}S\n\n`
@@ -173,14 +180,12 @@ export function BragListPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Brag List</h1>
-          <p className="text-muted-foreground">
-            Your resume-worthy achievements from GitHub
-          </p>
+          <p className="text-muted-foreground">Your resume-worthy achievements from GitHub</p>
         </div>
         <Card>
           <CardContent className="py-8 text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
-            <p className="text-muted-foreground mt-2">Loading your contributions...</p>
+            <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
+            <p className="mt-2 text-muted-foreground">Loading your contributions...</p>
           </CardContent>
         </Card>
       </div>
@@ -192,9 +197,7 @@ export function BragListPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Brag List</h1>
-          <p className="text-muted-foreground">
-            Your resume-worthy achievements from GitHub
-          </p>
+          <p className="text-muted-foreground">Your resume-worthy achievements from GitHub</p>
         </div>
         <Card>
           <CardHeader>
@@ -202,9 +205,7 @@ export function BragListPage() {
               <AlertCircle className="h-5 w-5" />
               <CardTitle>No Contributions Found</CardTitle>
             </div>
-            <CardDescription>
-              Scan your GitHub to generate your brag list
-            </CardDescription>
+            <CardDescription>Scan your GitHub to generate your brag list</CardDescription>
           </CardHeader>
           <CardContent>
             <Button onClick={() => (window.location.href = "/dashboard/github")}>
@@ -224,9 +225,7 @@ export function BragListPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Brag List</h1>
-          <p className="text-muted-foreground">
-            Your resume-worthy achievements from GitHub
-          </p>
+          <p className="text-muted-foreground">Your resume-worthy achievements from GitHub</p>
         </div>
         <Button onClick={exportToMarkdown}>
           <FileDown className="mr-2 h-4 w-4" />
@@ -235,7 +234,7 @@ export function BragListPage() {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -266,9 +265,7 @@ export function BragListPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {contributions.pullRequests.length}
-            </div>
+            <div className="text-2xl font-bold">{contributions.pullRequests.length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -298,10 +295,10 @@ export function BragListPage() {
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex flex-col gap-4 md:flex-row">
             {/* Search */}
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="text"
                 placeholder="Search contributions..."
@@ -343,30 +340,36 @@ export function BragListPage() {
         {filteredItems.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center">
-              <AlertCircle className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-              <p className="text-muted-foreground">
-                No contributions found matching your filters.
-              </p>
+              <AlertCircle className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
+              <p className="text-muted-foreground">No contributions found matching your filters.</p>
             </CardContent>
           </Card>
         ) : (
           filteredItems.map((item, index) => (
-            <Card key={index} className="hover:shadow-md transition-shadow">
+            <Card key={index} className="transition-shadow hover:shadow-md">
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center gap-2">
-                      {item.type === "commit" && <GitCommit className="h-4 w-4 text-muted-foreground" />}
-                      {item.type === "pr" && <GitPullRequest className="h-4 w-4 text-muted-foreground" />}
-                      {item.type === "issue" && <FileText className="h-4 w-4 text-muted-foreground" />}
-                      {item.type === "release" && <Rocket className="h-4 w-4 text-muted-foreground" />}
+                      {item.type === "commit" && (
+                        <GitCommit className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      {item.type === "pr" && (
+                        <GitPullRequest className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      {item.type === "issue" && (
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      {item.type === "release" && (
+                        <Rocket className="h-4 w-4 text-muted-foreground" />
+                      )}
                       <Badge
                         variant={
                           item.type === "release"
                             ? "default"
                             : item.significance === "high"
-                            ? "default"
-                            : "secondary"
+                              ? "default"
+                              : "secondary"
                         }
                       >
                         {item.type.toUpperCase()}
@@ -375,14 +378,14 @@ export function BragListPage() {
                         <Badge variant="outline">High Impact</Badge>
                       )}
                     </div>
-                    <h3 className="font-semibold text-lg">{item.title}</h3>
+                    <h3 className="text-lg font-semibold">{item.title}</h3>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <span>{item.repository}</span>
                       <span>•</span>
                       <span>{new Date(item.date).toLocaleDateString()}</span>
                     </div>
                     {item.description && (
-                      <p className="text-sm text-muted-foreground line-clamp-2">
+                      <p className="line-clamp-2 text-sm text-muted-foreground">
                         {item.description}
                       </p>
                     )}

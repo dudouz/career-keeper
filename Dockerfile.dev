@@ -1,28 +1,36 @@
-FROM node:18-alpine
+FROM node:25-alpine AS base
 
-# Install pnpm using corepack (built into Node 18+)
+# Install pnpm globally
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
+RUN npm install -g pnpm
+RUN pnpm install -g corepack
 RUN corepack enable
 
+# Install dependencies
+FROM base AS deps
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Copy package files
 COPY package.json pnpm-lock.yaml ./
 
-# Install dependencies with pnpm (using cache mount for faster rebuilds)
-# Clean install to ensure fresh dependencies
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --force
+# Install dependencies with pnpm
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
-# Copy the rest of the application
+# Development image
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV development
+ENV NEXT_TELEMETRY_DISABLED 1
+
+# Copy dependencies
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy source code (will be mounted as volume in docker-compose)
 COPY . .
 
-# Clean any existing build artifacts
-RUN rm -rf .next node_modules/.cache
-
-# Expose port 3000
 EXPOSE 3000
 
-# Start development server with pnpm
 CMD ["pnpm", "dev"]
-

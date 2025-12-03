@@ -1,24 +1,28 @@
 "use client"
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import {
-  GitCompare,
-  FileText,
+  useCompareResumeWithContributionsMutation,
+  useGitHubContributionsQuery,
+  useGitHubStatusQuery,
+} from "@/lib/api/queries"
+import {
   AlertCircle,
   CheckCircle,
-  XCircle,
   Clock,
   FileDown,
+  FileText,
+  GitCompare,
   Loader2,
   RefreshCw,
   Sparkles,
+  XCircle,
 } from "lucide-react"
-import { useGitHubContributionsQuery, useCompareResumeWithContributionsMutation } from "@/lib/api/queries"
+import { useState } from "react"
 
 interface ComparisonData {
   missingAchievements: string[]
@@ -34,7 +38,11 @@ interface SectionChange {
 }
 
 export function ResumeComparePage() {
-  const { data: contributionsData, isLoading: loadingContributions } = useGitHubContributionsQuery()
+  const { data: statusData } = useGitHubStatusQuery()
+  const isConnected = statusData?.connected || false
+  const { data: contributionsData, isLoading: loadingContributions } = useGitHubContributionsQuery({
+    enabled: isConnected, // Only fetch when GitHub is connected
+  })
   const compareMutation = useCompareResumeWithContributionsMutation()
 
   const [comparison, setComparison] = useState<ComparisonData | null>(null)
@@ -85,11 +93,15 @@ export function ResumeComparePage() {
   }
 
   const handleAccept = (id: string) => {
-    setChanges((prev) => prev.map((change) => (change.id === id ? { ...change, accepted: true } : change)))
+    setChanges((prev) =>
+      prev.map((change) => (change.id === id ? { ...change, accepted: true } : change))
+    )
   }
 
   const handleReject = (id: string) => {
-    setChanges((prev) => prev.map((change) => (change.id === id ? { ...change, accepted: false } : change)))
+    setChanges((prev) =>
+      prev.map((change) => (change.id === id ? { ...change, accepted: false } : change))
+    )
   }
 
   const exportAcceptedChanges = () => {
@@ -98,11 +110,14 @@ export function ResumeComparePage() {
     let markdown = "# Resume Update Recommendations\n\n"
     markdown += `Generated on ${new Date().toLocaleDateString()}\n\n`
 
-    const byType = accepted.reduce((acc, change) => {
-      if (!acc[change.type]) acc[change.type] = []
-      acc[change.type].push(change.content)
-      return acc
-    }, {} as Record<string, string[]>)
+    const byType = accepted.reduce(
+      (acc, change) => {
+        if (!acc[change.type]) acc[change.type] = []
+        acc[change.type].push(change.content)
+        return acc
+      },
+      {} as Record<string, string[]>
+    )
 
     if (byType.missing) {
       markdown += "## Missing Achievements\n\n"
@@ -156,8 +171,8 @@ export function ResumeComparePage() {
         </div>
         <Card>
           <CardContent className="py-8 text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
-            <p className="text-muted-foreground mt-2">Loading contributions...</p>
+            <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
+            <p className="mt-2 text-muted-foreground">Loading contributions...</p>
           </CardContent>
         </Card>
       </div>
@@ -169,11 +184,13 @@ export function ResumeComparePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
+          <h1 className="flex items-center gap-2 text-3xl font-bold">
             <GitCompare className="h-8 w-8" />
             Resume Comparison
           </h1>
-          <p className="text-muted-foreground">AI-powered analysis of your resume vs GitHub activity</p>
+          <p className="text-muted-foreground">
+            AI-powered analysis of your resume vs GitHub activity
+          </p>
         </div>
         {comparison && (
           <Button onClick={exportAcceptedChanges} disabled={stats.accepted === 0}>
@@ -246,7 +263,7 @@ export function ResumeComparePage() {
       {comparison && (
         <>
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -294,7 +311,7 @@ export function ResumeComparePage() {
           </div>
 
           {/* Split View */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {/* Left: Original Resume */}
             <Card>
               <CardHeader>
@@ -302,7 +319,7 @@ export function ResumeComparePage() {
                 <CardDescription>Your existing resume content</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="prose prose-sm max-w-none whitespace-pre-wrap text-sm p-4 bg-muted rounded-lg max-h-[600px] overflow-y-auto">
+                <div className="prose prose-sm max-h-[600px] max-w-none overflow-y-auto whitespace-pre-wrap rounded-lg bg-muted p-4 text-sm">
                   {existingResume}
                 </div>
               </CardContent>
@@ -316,8 +333,8 @@ export function ResumeComparePage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 {changes.length === 0 ? (
-                  <div className="text-center py-8">
-                    <CheckCircle className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                  <div className="py-8 text-center">
+                    <CheckCircle className="mx-auto mb-2 h-12 w-12 text-muted-foreground" />
                     <p className="text-muted-foreground">No changes suggested</p>
                   </div>
                 ) : (
@@ -325,51 +342,62 @@ export function ResumeComparePage() {
                     // Determine change card styling
                     let cardStyle = "bg-background"
                     if (change.accepted === true) {
-                      cardStyle = "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800"
+                      cardStyle =
+                        "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800"
                     } else if (change.accepted === false) {
                       cardStyle = "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800"
                     }
 
                     // Determine badge variant
                     const badgeVariant =
-                      change.type === "missing" ? "default" :
-                      change.type === "outdated" ? "destructive" :
-                      "secondary"
+                      change.type === "missing"
+                        ? "default"
+                        : change.type === "outdated"
+                          ? "destructive"
+                          : "secondary"
 
                     // Determine badge label
                     const badgeLabel =
-                      change.type === "missing" ? "Missing" :
-                      change.type === "outdated" ? "Outdated" :
-                      "Suggestion"
+                      change.type === "missing"
+                        ? "Missing"
+                        : change.type === "outdated"
+                          ? "Outdated"
+                          : "Suggestion"
 
                     return (
                       <div
                         key={change.id}
-                        className={`p-4 border rounded-lg space-y-3 ${cardStyle}`}
+                        className={`space-y-3 rounded-lg border p-4 ${cardStyle}`}
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <Badge variant={badgeVariant}>
-                            {badgeLabel}
-                          </Badge>
-                        {change.accepted !== null && (
-                          <Badge variant={change.accepted ? "default" : "outline"}>
-                            {change.accepted ? "Accepted" : "Rejected"}
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-sm">{change.content}</p>
-                      {change.accepted === null && (
-                        <div className="flex gap-2">
-                          <Button size="sm" onClick={() => handleAccept(change.id)} variant="default">
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            Accept
-                          </Button>
-                          <Button size="sm" onClick={() => handleReject(change.id)} variant="outline">
-                            <XCircle className="mr-2 h-4 w-4" />
-                            Reject
-                          </Button>
+                          <Badge variant={badgeVariant}>{badgeLabel}</Badge>
+                          {change.accepted !== null && (
+                            <Badge variant={change.accepted ? "default" : "outline"}>
+                              {change.accepted ? "Accepted" : "Rejected"}
+                            </Badge>
+                          )}
                         </div>
-                      )}
+                        <p className="text-sm">{change.content}</p>
+                        {change.accepted === null && (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleAccept(change.id)}
+                              variant="default"
+                            >
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Accept
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => handleReject(change.id)}
+                              variant="outline"
+                            >
+                              <XCircle className="mr-2 h-4 w-4" />
+                              Reject
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     )
                   })
@@ -381,7 +409,7 @@ export function ResumeComparePage() {
           {/* Actions */}
           <Card>
             <CardContent className="pt-6">
-              <div className="flex gap-4 justify-center">
+              <div className="flex justify-center gap-4">
                 <Button
                   onClick={() => {
                     setComparison(null)
