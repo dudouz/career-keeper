@@ -109,7 +109,7 @@ export function ResumePage() {
             <CardTitle>Upload Resume</CardTitle>
           </div>
           <CardDescription>
-            Upload your existing resume in DOCX or TXT format (max 5MB) · PDF support coming soon
+            Upload your existing resume in PDF (recommended), DOCX, or TXT format (max 5MB)
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -117,7 +117,7 @@ export function ResumePage() {
             <input
               type="file"
               id="resume-upload"
-              accept=".docx,.txt,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+              accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
               onChange={handleFileUpload}
               disabled={isUploading}
               className="hidden"
@@ -131,7 +131,7 @@ export function ResumePage() {
               </Button>
             </label>
             <span className="text-sm text-muted-foreground">
-              Accepted formats: DOCX, TXT
+              Accepted formats: PDF (recommended), DOCX, TXT
             </span>
           </div>
 

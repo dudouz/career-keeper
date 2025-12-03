@@ -11,10 +11,14 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 
 # Install dependencies with pnpm (using cache mount for faster rebuilds)
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install
+# Clean install to ensure fresh dependencies
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --force
 
 # Copy the rest of the application
 COPY . .
+
+# Clean any existing build artifacts
+RUN rm -rf .next node_modules/.cache
 
 # Expose port 3000
 EXPOSE 3000

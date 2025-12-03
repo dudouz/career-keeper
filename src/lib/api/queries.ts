@@ -61,19 +61,33 @@ export function useGitHubStatusQuery(options?: Omit<UseQueryOptions<{ connected:
 }
 
 /**
- * Fetch GitHub contributions
+ * Fetch GitHub contributions (cached from database)
  */
-export function useGitHubContributionsQuery(options?: Omit<UseQueryOptions<{ contributions: GitHubContributionData }>, "queryKey" | "queryFn">) {
+export function useGitHubContributionsQuery(options?: Omit<UseQueryOptions<{ contributions: GitHubContributionData; lastScanned?: Date; scanCount?: number }>, "queryKey" | "queryFn">) {
   return useQuery({
     queryKey: queryKeys.github.contributions(),
     queryFn: async () => {
-      const response = await fetch("/api/github/scan")
+      const response = await fetch("/api/github/scan", {
+        method: "GET",
+      })
       if (!response.ok) {
+        if (response.status === 404) {
+          // No contributions found - return empty data instead of throwing
+          return {
+            contributions: {
+              commits: [],
+              pullRequests: [],
+              issues: [],
+              releases: [],
+              repositories: [],
+              languages: {},
+            },
+          }
+        }
         throw new Error("Failed to fetch contributions")
       }
       return response.json()
     },
-    enabled: false, // Don't fetch automatically
     ...options,
   })
 }
@@ -354,7 +368,18 @@ export function useUploadResumeMutation() {
         throw new Error(error.error || "Failed to upload resume")
       }
 
-      return response.json()
+      return response.json() as Promise<{
+        success: boolean
+        resumeId?: string
+        resume: {
+          id: string
+          title: string
+          fileName: string
+          fileType: string
+          content: any
+        }
+        message: string
+      }>
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.resume.list() })
