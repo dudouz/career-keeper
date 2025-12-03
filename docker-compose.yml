@@ -26,7 +26,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile.dev  # Volte para Dockerfile.dev
+      dockerfile: Dockerfile.dev # Volte para Dockerfile.dev
     container_name: career-keeper-app
     restart: unless-stopped
     ports:
