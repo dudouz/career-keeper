@@ -1,17 +1,17 @@
 "use client"
 
-import { useState } from "react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { CheckCircle2, Lightbulb, Loader2, Upload } from "lucide-react"
 import { useUploadResumeMutation } from "@/lib/api/queries"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { CheckCircle2, Lightbulb, Loader2, Upload } from "lucide-react"
+import { useState } from "react"
+import { useForm } from "react-hook-form"
 import { resumeSchema, type ResumeFormData } from "../onboarding-schema"
 
 interface ResumeOnboardingProps {
-  onSuccess: (resumeId?: string) => void
+  onSuccess: () => void
   onSkip: () => void
 }
 
@@ -43,8 +43,8 @@ export function ResumeOnboarding({ onSuccess, onSkip }: ResumeOnboardingProps) {
 
   const handleUploadResume = (data: ResumeFormData) => {
     uploadMutation.mutate(data.file, {
-      onSuccess: (response) => {
-        onSuccess(response.resumeId)
+      onSuccess: () => {
+        onSuccess()
       },
     })
   }

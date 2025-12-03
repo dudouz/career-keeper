@@ -392,7 +392,12 @@ export function useUploadResumeMutation() {
         throw new Error(error.error || "Failed to upload resume")
       }
 
-      return response.json() as Promise<{
+      const result = await response.json()
+      // Ensure resumeId is available for convenience
+      return {
+        ...result,
+        resumeId: result.resume?.id,
+      } as {
         success: boolean
         resumeId?: string
         resume: {
@@ -403,10 +408,12 @@ export function useUploadResumeMutation() {
           content: ResumeContent
         }
         message: string
-      }>
+      }
     },
     onSuccess: () => {
+      // Immediately refetch to update the UI
       queryClient.invalidateQueries({ queryKey: queryKeys.resume.list() })
+      queryClient.refetchQueries({ queryKey: queryKeys.resume.list() })
     },
   })
 }

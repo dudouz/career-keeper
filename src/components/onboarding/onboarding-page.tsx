@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -33,17 +33,15 @@ const steps = [
 
 export function OnboardingPage() {
   const router = useRouter()
-  const [currentStep, setCurrentStep] = useState<WizardStep>("github")
-  const [completedSteps, setCompletedSteps] = useState<Set<WizardStep>>(new Set())
-  const [resumeId, setResumeId] = useState<string | null>(null)
+  const [manualStep, setManualStep] = useState<WizardStep | null>(null)
 
   // Queries
   const { data: githubStatus, isLoading: loadingGithubStatus } = useGitHubStatusQuery()
   const { data: openaiKeyStatus, isLoading: loadingOpenAIStatus } = useOpenAIKeyStatusQuery()
   const { data: resumesData, isLoading: loadingResumes } = useResumesQuery()
 
-  // Check existing setup status and update completed steps
-  useEffect(() => {
+  // Derive completed steps from query data
+  const completedSteps = useMemo(() => {
     const completed = new Set<WizardStep>()
 
     if (githubStatus?.connected) {
@@ -58,49 +56,56 @@ export function OnboardingPage() {
       completed.add("resume")
     }
 
-    setCompletedSteps(completed)
-
-    // Set current step to first incomplete step
-    if (!completed.has("github")) {
-      setCurrentStep("github")
-    } else if (!completed.has("openai")) {
-      setCurrentStep("openai")
-    } else if (!completed.has("resume")) {
-      setCurrentStep("resume")
-    } else {
-      setCurrentStep("results")
-    }
+    return completed
   }, [githubStatus, openaiKeyStatus, resumesData])
+
+  // Derive current step: use manual selection if set, otherwise auto-navigate to first incomplete step
+  const currentStep = useMemo(() => {
+    if (manualStep) {
+      return manualStep
+    }
+
+    // Auto-navigate to first incomplete step
+    if (!completedSteps.has("github")) {
+      return "github"
+    }
+    if (!completedSteps.has("openai")) {
+      return "openai"
+    }
+    if (!completedSteps.has("resume")) {
+      return "resume"
+    }
+    return "results"
+  }, [manualStep, completedSteps])
+
+  // Derive resumeId from query data
+  const resumeId = useMemo(() => {
+    return resumesData?.resumes?.[0]?.id ?? null
+  }, [resumesData])
 
   // Step handlers
   const handleGithubSuccess = () => {
-    setCompletedSteps(new Set([...completedSteps, "github"]))
-    setCurrentStep("openai")
+    setManualStep("openai")
   }
 
   const handleGithubSkip = () => {
-    setCurrentStep("openai")
+    setManualStep("openai")
   }
 
   const handleOpenAISuccess = () => {
-    setCompletedSteps(new Set([...completedSteps, "openai"]))
-    setCurrentStep("resume")
+    setManualStep("resume")
   }
 
   const handleOpenAISkip = () => {
-    setCurrentStep("resume")
+    setManualStep("resume")
   }
 
-  const handleResumeSuccess = (uploadedResumeId?: string) => {
-    if (uploadedResumeId) {
-      setResumeId(uploadedResumeId)
-    }
-    setCompletedSteps(new Set([...completedSteps, "resume"]))
-    setCurrentStep("results")
+  const handleResumeSuccess = () => {
+    setManualStep("results")
   }
 
   const handleResumeSkip = () => {
-    setCurrentStep("results")
+    setManualStep("results")
   }
 
   const handleFinish = () => {
@@ -162,7 +167,7 @@ export function OnboardingPage() {
             return (
               <button
                 key={step.id}
-                onClick={() => isAccessible && setCurrentStep(step.id)}
+                onClick={() => isAccessible && setManualStep(step.id)}
                 disabled={!isAccessible}
                 className={`flex flex-col items-center gap-2 rounded-lg p-4 transition-all ${stepStyle} ${cursorStyle}`}
               >
