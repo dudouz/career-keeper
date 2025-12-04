@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm"
-import { boolean, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
+import { boolean, index, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
 
 // User model - OAuth-only authentication
 export const users = pgTable("users", {
@@ -71,6 +71,31 @@ export const resumes = pgTable("resumes", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 })
 
+// Comparison model
+export const comparisons = pgTable("comparisons", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  resumeId: uuid("resume_id")
+    .notNull()
+    .references(() => resumes.id, { onDelete: "cascade" }),
+  comparisonData: jsonb("comparison_data").notNull(),
+  comparisonHistory: jsonb("comparison_history").notNull().default([]),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+})
+
+export const comparisonHistory = pgTable(
+  "comparison_history",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    comparisonId: uuid("comparison_id").notNull(),
+    comparisonData: jsonb("comparison_data").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [index("comparison_id_index").on(table.comparisonId)]
+)
+
 // Resume Version model (for Premium tier)
 export const resumeVersions = pgTable("resume_versions", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -84,6 +109,23 @@ export const resumeVersions = pgTable("resume_versions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 })
 
+// Resume History model (automatic change tracking)
+export const resumeHistory = pgTable(
+  "resume_history",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    resumeId: uuid("resume_id")
+      .notNull()
+      .references(() => resumes.id, { onDelete: "cascade" }),
+    content: jsonb("content").notNull(), // Snapshot do conteúdo
+    rawContent: text("raw_content"), // Snapshot do conteúdo raw
+    changeType: text("change_type"), // 'created', 'updated', 'deleted'
+    changedFields: jsonb("changed_fields"), // Campos que mudaram
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [index("resume_id_index").on(table.resumeId)]
+)
+
 // GitHub Contribution model (temporary cache)
 export const githubContributions = pgTable("github_contributions", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -94,20 +136,6 @@ export const githubContributions = pgTable("github_contributions", {
   lastScanned: timestamp("last_scanned").defaultNow().notNull(),
   scanCount: integer("scan_count").default(0).notNull(), // Track monthly scan limit
   expiresAt: timestamp("expires_at").notNull(), // Auto-cleanup old cache
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-})
-
-// TODO: Check if this is needed
-// User Session model (for JWT/session-based auth)
-export const userSessions = pgTable("user_sessions", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  sessionToken: text("session_token").notNull().unique(),
-  githubPat: text("github_pat"), // Encrypted, session-only storage
-  openaiApiKey: text("openai_api_key"), // Encrypted, session-only storage
-  expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 })
 
@@ -140,10 +168,14 @@ export const githubContributionsRelations = relations(githubContributions, ({ on
   }),
 }))
 
-// TODO: Check if this is needed
-export const userSessionsRelations = relations(userSessions, ({ one }) => ({
+export const comparisonsRelations = relations(comparisons, ({ one, many }) => ({
   user: one(users, {
-    fields: [userSessions.userId],
+    fields: [comparisons.userId],
     references: [users.id],
   }),
+  resume: one(resumes, {
+    fields: [comparisons.resumeId],
+    references: [resumes.id],
+  }),
+  history: many(comparisonHistory),
 }))
