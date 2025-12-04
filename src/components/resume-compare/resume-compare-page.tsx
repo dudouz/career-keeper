@@ -43,7 +43,13 @@ export function ResumeComparePage() {
   const { data: contributionsData, isLoading: loadingContributions } = useGitHubContributionsQuery({
     enabled: isConnected, // Only fetch when GitHub is connected
   })
-  const compareMutation = useCompareResumeWithContributionsMutation()
+  const {
+    mutate: compareResume,
+
+    isPending: isComparing,
+    isError: isComparingError,
+    error: comparingError,
+  } = useCompareResumeWithContributionsMutation()
 
   const [comparison, setComparison] = useState<ComparisonData | null>(null)
   const [changes, setChanges] = useState<SectionChange[]>([])
@@ -56,7 +62,7 @@ export function ResumeComparePage() {
       return
     }
 
-    compareMutation.mutate(
+    compareResume(
       {
         existingResume,
         contributions,
@@ -64,6 +70,8 @@ export function ResumeComparePage() {
       {
         onSuccess: (data) => {
           setComparison(data)
+
+          console.log(data, "comparison data")
 
           // Convert comparison data to changes
           const newChanges: SectionChange[] = [
@@ -220,12 +228,12 @@ export function ResumeComparePage() {
               rows={15}
               className="resize-y"
             />
-            {compareMutation.isError && (
+            {isComparingError && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  {compareMutation.error instanceof Error
-                    ? compareMutation.error.message
+                  {comparingError instanceof Error
+                    ? comparingError.message
                     : "Failed to compare resume"}
                 </AlertDescription>
               </Alert>
@@ -240,10 +248,10 @@ export function ResumeComparePage() {
             )}
             <Button
               onClick={handleCompare}
-              disabled={compareMutation.isPending || !existingResume.trim() || !contributions}
+              disabled={isComparing || !existingResume.trim() || !contributions}
               className="w-full"
             >
-              {compareMutation.isPending ? (
+              {isComparing ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Analyzing...
@@ -331,6 +339,7 @@ export function ResumeComparePage() {
                 <CardTitle>Suggested Changes</CardTitle>
                 <CardDescription>Based on your GitHub contributions</CardDescription>
               </CardHeader>
+
               <CardContent className="space-y-3">
                 {changes.length === 0 ? (
                   <div className="py-8 text-center">

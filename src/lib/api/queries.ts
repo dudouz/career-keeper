@@ -315,11 +315,13 @@ export function useCompareResumeWithContributionsMutation() {
         throw new Error(error.error || "Failed to compare resume")
       }
 
-      return response.json() as Promise<{
+      const data = await response.json()
+
+      return data.data as {
         missingAchievements: string[]
         outdatedSections: string[]
         suggestions: string[]
-      }>
+      }
     },
     onSuccess: (data) => {
       queryClient.setQueryData(queryKeys.llm.compare(), data)
