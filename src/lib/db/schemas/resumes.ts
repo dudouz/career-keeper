@@ -8,7 +8,20 @@ export const resumes = pgTable("resumes", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
-  content: jsonb("content").notNull(), // Structured resume content
+
+  // Header fields (contact information)
+  name: text("name"),
+  email: text("email"),
+  phone: text("phone"),
+  git: text("git"),
+  linkedin: text("linkedin"),
+  website: text("website"),
+
+  // Summary
+  summary: text("summary"),
+
+  // Legacy field - keeping for backward compatibility
+  content: jsonb("content"), // Structured resume content (deprecated)
   rawContent: text("raw_content"), // Original uploaded content
   fileName: text("file_name"),
   fileType: text("file_type"), // 'pdf', 'docx', 'txt'
@@ -17,6 +30,26 @@ export const resumes = pgTable("resumes", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 })
+
+// Resume sections (work experience)
+export const resumeSections = pgTable(
+  "resume_sections",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    resumeId: uuid("resume_id")
+      .notNull()
+      .references(() => resumes.id, { onDelete: "cascade" }),
+    startDate: text("start_date").notNull(),
+    endDate: text("end_date"), // null = current position
+    position: text("position").notNull(),
+    company: text("company").notNull(),
+    description: text("description").notNull(),
+    displayOrder: integer("display_order").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [index("resume_sections_resume_id_index").on(table.resumeId)]
+)
 
 // Resume Version model (for Premium tier)
 export const resumeVersions = pgTable("resume_versions", {

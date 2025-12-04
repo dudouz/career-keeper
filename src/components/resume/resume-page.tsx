@@ -1,48 +1,60 @@
 "use client"
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { formatDistance } from "date-fns"
-import type { ResumeContent } from "@/lib/db/types"
-import { exportResumeToPDF } from "@/lib/export/pdf"
-import { exportResumeToTXT } from "@/lib/export/txt"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
-  FileText,
-  Upload,
-  Loader2,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  useDeleteResumeMutation,
+  useReprocessResumeMutation,
+  useResumesQuery,
+  useUploadResumeMutation,
+} from "@/lib/api/queries"
+import type { Resume as DBResume, ResumeSection } from "@/lib/db/types"
+import { formatDistance } from "date-fns"
+import {
   AlertCircle,
-  CheckCircle,
-  FileDown,
   Briefcase,
-  GraduationCap,
-  Code,
-  FolderGit2,
+  CheckCircle,
+  FileText,
+  Github,
+  Globe,
+  Linkedin,
+  Loader2,
+  Mail,
+  MoreVertical,
+  Phone,
+  RefreshCw,
+  Trash2,
+  Upload,
+  User,
 } from "lucide-react"
-import { useResumesQuery, useUploadResumeMutation } from "@/lib/api/queries"
+import { useState } from "react"
 
-interface Resume {
-  id: string
-  title: string
-  fileName: string
-  fileType: string
-  isActive: boolean
-  createdAt: Date
-  updatedAt: Date
-}
-
-interface UploadedResume extends Resume {
-  content: ResumeContent
+interface ResumeWithSections extends DBResume {
+  sections?: ResumeSection[]
 }
 
 export function ResumePage() {
   const { data: resumesData, isLoading: loading } = useResumesQuery()
-  const { mutate: uploadResume, isPending: isUploading, isError: isUploadingError, isSuccess: isUploadingSuccess, error: uploadError } = useUploadResumeMutation()
-  const [activeResume, setActiveResume] = useState<UploadedResume | null>(null)
+  const {
+    mutate: uploadResume,
+    isPending: isUploading,
+    isError: isUploadingError,
+    isSuccess: isUploadingSuccess,
+    error: uploadError,
+  } = useUploadResumeMutation()
+  const { mutate: reprocessResume, isPending: isReprocessing } = useReprocessResumeMutation()
+  const { mutate: deleteResume, isPending: isDeleting } = useDeleteResumeMutation()
+  const [selectedResume, setSelectedResume] = useState<ResumeWithSections | null>(null)
 
-  const resumes = (resumesData?.resumes || []) as Resume[]
+  const resumes = (resumesData?.resumes || []) as ResumeWithSections[]
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -50,16 +62,14 @@ export function ResumePage() {
 
     uploadResume(file, {
       onSuccess: (data) => {
-        setActiveResume({
-          ...data.resume,
-          isActive: true,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        } as UploadedResume)
+        setSelectedResume(data.resume as ResumeWithSections)
         e.target.value = ""
       },
     })
   }
+
+  // Auto-select active resume or first resume
+  const displayResume = selectedResume || resumes.find((r) => r.isActive) || resumes[0]
 
   if (loading) {
     return (
@@ -67,8 +77,8 @@ export function ResumePage() {
         <h1 className="text-3xl font-bold">Resume Management</h1>
         <Card>
           <CardContent className="py-8 text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
-            <p className="text-muted-foreground mt-2">Loading resumes...</p>
+            <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
+            <p className="mt-2 text-muted-foreground">Loading resumes...</p>
           </CardContent>
         </Card>
       </div>
@@ -79,9 +89,7 @@ export function ResumePage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Resume Management</h1>
-        <p className="text-muted-foreground">
-          Upload and manage your resumes
-        </p>
+        <p className="text-muted-foreground">Upload and manage your resumes</p>
       </div>
 
       {isUploadingError && (
@@ -96,9 +104,7 @@ export function ResumePage() {
       {isUploadingSuccess && (
         <Alert className="border-green-200 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-900/20 dark:text-green-400">
           <CheckCircle className="h-4 w-4" />
-          <AlertDescription>
-            Resume uploaded and parsed successfully!
-          </AlertDescription>
+          <AlertDescription>Resume uploaded and parsed successfully!</AlertDescription>
         </Alert>
       )}
 
@@ -136,34 +142,26 @@ export function ResumePage() {
           </div>
 
           <div className="rounded-lg bg-muted p-4 text-sm">
-            <p className="font-semibold mb-2">What we extract from your resume:</p>
+            <p className="mb-2 font-semibold">What we extract from your resume:</p>
             <ul className="space-y-1 text-muted-foreground">
               <li className="flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Contact information (name, email, phone, links)
+              </li>
+              <li className="flex items-center gap-2">
                 <FileText className="h-4 w-4" />
-                Professional summary/profile
+                Professional summary
               </li>
               <li className="flex items-center gap-2">
                 <Briefcase className="h-4 w-4" />
-                Work experience and job history
-              </li>
-              <li className="flex items-center gap-2">
-                <FolderGit2 className="h-4 w-4" />
-                Projects and portfolio items
-              </li>
-              <li className="flex items-center gap-2">
-                <Code className="h-4 w-4" />
-                Technical skills and technologies
-              </li>
-              <li className="flex items-center gap-2">
-                <GraduationCap className="h-4 w-4" />
-                Education and certifications
+                Work experience with dates, positions, and descriptions
               </li>
             </ul>
           </div>
         </CardContent>
       </Card>
 
-      {(activeResume || resumes.length > 0) && (
+      {resumes.length > 0 && (
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
@@ -179,23 +177,71 @@ export function ResumePage() {
               {resumes.map((resume) => (
                 <div
                   key={resume.id}
-                  className="flex items-center justify-between rounded-lg border p-4"
+                  className={`flex items-center justify-between rounded-lg border p-4 transition-colors ${
+                    displayResume?.id === resume.id
+                      ? "border-primary bg-primary/5"
+                      : "hover:bg-muted/50"
+                  }`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div
+                    className="flex flex-1 cursor-pointer items-center gap-3"
+                    onClick={() => setSelectedResume(resume)}
+                  >
                     <FileText className="h-5 w-5 text-muted-foreground" />
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <p className="font-semibold">{resume.title}</p>
-                        {resume.isActive && (
-                          <Badge variant="default">Active</Badge>
+                        {resume.isActive && <Badge variant="default">Active</Badge>}
+                        {resume.fileType && (
+                          <Badge variant="secondary">{resume.fileType.toUpperCase()}</Badge>
                         )}
-                        <Badge variant="secondary">{resume.fileType.toUpperCase()}</Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {resume.fileName} · Uploaded {formatDistance(new Date(resume.createdAt), new Date(), { addSuffix: true })}
+                        {resume.fileName} · Uploaded{" "}
+                        {formatDistance(new Date(resume.createdAt), new Date(), {
+                          addSuffix: true,
+                        })}
                       </p>
                     </div>
                   </div>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setSelectedResume(resume)
+                          reprocessResume(resume.id)
+                        }}
+                        disabled={isReprocessing}
+                      >
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Re-extract Data
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          if (confirm("Are you sure you want to delete this resume?")) {
+                            deleteResume(resume.id, {
+                              onSuccess: () => {
+                                if (selectedResume?.id === resume.id) {
+                                  setSelectedResume(null)
+                                }
+                              },
+                            })
+                          }
+                        }}
+                        disabled={isDeleting}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               ))}
             </div>
@@ -203,180 +249,149 @@ export function ResumePage() {
         </Card>
       )}
 
-      {activeResume && (
-        <>
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Parsed Content</CardTitle>
-                  <CardDescription>
-                    Sections extracted from your resume
-                  </CardDescription>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      exportResumeToTXT(
-                        activeResume.content,
-                        `${activeResume.title.replace(/\s+/g, "-")}.txt`
-                      )
-                    }
-                  >
-                    <FileDown className="mr-2 h-4 w-4" />
-                    TXT
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() =>
-                      exportResumeToPDF(
-                        activeResume.content,
-                        `${activeResume.title.replace(/\s+/g, "-")}.pdf`
-                      )
-                    }
-                  >
-                    <FileDown className="mr-2 h-4 w-4" />
-                    PDF
-                  </Button>
-                </div>
+      {displayResume && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Extracted Data</CardTitle>
+                <CardDescription>Structured information from your resume</CardDescription>
               </div>
-            </CardHeader>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => reprocessResume(displayResume.id)}
+                disabled={isReprocessing}
+              >
+                {isReprocessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Re-extract Data
+              </Button>
+            </div>
+          </CardHeader>
           <CardContent className="space-y-6">
-            {activeResume.content.summary && (
+            {/* Contact Information */}
+            <div>
+              <h4 className="mb-3 flex items-center gap-2 font-semibold">
+                <User className="h-4 w-4" />
+                Contact Information
+              </h4>
+              <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+                {displayResume.name && (
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span>{displayResume.name}</span>
+                  </div>
+                )}
+                {displayResume.email && (
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <span>{displayResume.email}</span>
+                  </div>
+                )}
+                {displayResume.phone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <span>{displayResume.phone}</span>
+                  </div>
+                )}
+                {displayResume.git && (
+                  <div className="flex items-center gap-2">
+                    <Github className="h-4 w-4 text-muted-foreground" />
+                    <a
+                      href={displayResume.git}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      GitHub Profile
+                    </a>
+                  </div>
+                )}
+                {displayResume.linkedin && (
+                  <div className="flex items-center gap-2">
+                    <Linkedin className="h-4 w-4 text-muted-foreground" />
+                    <a
+                      href={displayResume.linkedin}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      LinkedIn Profile
+                    </a>
+                  </div>
+                )}
+                {displayResume.website && (
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-muted-foreground" />
+                    <a
+                      href={displayResume.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      Personal Website
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Summary */}
+            {displayResume.summary && (
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  <h4 className="font-semibold">Summary</h4>
-                </div>
-                <p className="text-sm text-muted-foreground">{activeResume.content.summary}</p>
+                <h4 className="mb-2 flex items-center gap-2 font-semibold">
+                  <FileText className="h-4 w-4" />
+                  Professional Summary
+                </h4>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  {displayResume.summary}
+                </p>
               </div>
             )}
 
-            {activeResume.content.experience && activeResume.content.experience.length > 0 && (
+            {/* Work Experience Sections */}
+            {displayResume.sections && displayResume.sections.length > 0 && (
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Briefcase className="h-4 w-4 text-muted-foreground" />
-                  <h4 className="font-semibold">Experience</h4>
-                </div>
-                <div className="space-y-2">
-                  {activeResume.content.experience.map((exp, i) => (
-                    <div key={i} className="text-sm">
-                      <p className="font-medium">{exp.position || exp.company}</p>
-                      <p className="text-muted-foreground">{exp.company !== exp.position && exp.company}</p>
+                <h4 className="mb-3 flex items-center gap-2 font-semibold">
+                  <Briefcase className="h-4 w-4" />
+                  Work Experience ({displayResume.sections.length})
+                </h4>
+                <div className="space-y-4">
+                  {displayResume.sections.map((section) => (
+                    <div key={section.id} className="border-l-2 border-primary/20 py-2 pl-4">
+                      <div className="mb-1 flex items-start justify-between">
+                        <div>
+                          <h5 className="font-semibold">{section.position}</h5>
+                          <p className="text-sm text-muted-foreground">{section.company}</p>
+                        </div>
+                        <Badge variant="outline" className="text-xs">
+                          {section.startDate} - {section.endDate || "Present"}
+                        </Badge>
+                      </div>
+                      {section.description && (
+                        <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">
+                          {section.description}
+                        </p>
+                      )}
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {activeResume.content.skills && activeResume.content.skills.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Code className="h-4 w-4 text-muted-foreground" />
-                  <h4 className="font-semibold">Skills</h4>
+            {/* Empty state */}
+            {!displayResume.name &&
+              !displayResume.email &&
+              !displayResume.summary &&
+              (!displayResume.sections || displayResume.sections.length === 0) && (
+                <div className="py-8 text-center text-muted-foreground">
+                  <FileText className="mx-auto mb-2 h-12 w-12 opacity-50" />
+                  <p>No structured data extracted yet.</p>
+                  <p className="text-sm">Upload a resume to see extracted information here.</p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {activeResume.content.skills.map((skill, i) => (
-                    <Badge key={i} variant="secondary">
-                      {skill}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {activeResume.content.education && activeResume.content.education.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <GraduationCap className="h-4 w-4 text-muted-foreground" />
-                  <h4 className="font-semibold">Education</h4>
-                </div>
-                <div className="space-y-2">
-                  {activeResume.content.education.map((edu, i) => (
-                    <div key={i} className="text-sm">
-                      <p className="font-medium">{edu.degree || edu.institution}</p>
-                      <p className="text-muted-foreground">{edu.institution !== edu.degree && edu.institution}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {activeResume.content.projects && activeResume.content.projects.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <FolderGit2 className="h-4 w-4 text-muted-foreground" />
-                  <h4 className="font-semibold">Projects</h4>
-                </div>
-                <div className="space-y-2">
-                  {activeResume.content.projects.map((project, i) => (
-                    <div key={i} className="text-sm">
-                      <p className="font-medium">{project.name}</p>
-                      <p className="text-muted-foreground">{project.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+              )}
           </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <FileDown className="h-5 w-5" />
-                <CardTitle>Export Options</CardTitle>
-              </div>
-              <CardDescription>
-                Download your resume in different formats
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 border rounded-lg space-y-2">
-                  <h4 className="font-semibold">PDF Format</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Professional PDF with proper formatting, sections, and page breaks. Best for job applications.
-                  </p>
-                  <Button
-                    className="w-full"
-                    onClick={() =>
-                      exportResumeToPDF(
-                        activeResume.content,
-                        `${activeResume.title.replace(/\s+/g, "-")}.pdf`
-                      )
-                    }
-                  >
-                    <FileDown className="mr-2 h-4 w-4" />
-                    Download PDF
-                  </Button>
-                </div>
-
-                <div className="p-4 border rounded-lg space-y-2">
-                  <h4 className="font-semibold">Plain Text Format</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Simple text file with clean formatting. Compatible with all systems and ATS scanners.
-                  </p>
-                  <Button
-                    className="w-full"
-                    variant="outline"
-                    onClick={() =>
-                      exportResumeToTXT(
-                        activeResume.content,
-                        `${activeResume.title.replace(/\s+/g, "-")}.txt`
-                      )
-                    }
-                  >
-                    <FileDown className="mr-2 h-4 w-4" />
-                    Download TXT
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </>
+        </Card>
       )}
     </div>
   )

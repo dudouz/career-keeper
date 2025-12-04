@@ -8,6 +8,34 @@
       "when": 1764872013527,
       "tag": "0000_swift_deathstrike",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1764879024156,
+      "tag": "0001_loud_human_cannonball",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1764879328139,
+      "tag": "0002_rare_thunderbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1764879418261,
+      "tag": "0003_violet_anita_blake",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1764880012275,
+      "tag": "0004_chubby_tenebrous",
+      "breakpoints": true
     }
   ]
 }

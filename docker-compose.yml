@@ -51,6 +51,29 @@ services:
     networks:
       - career-keeper-network
 
+  # Drizzle Studio (Database GUI)
+  drizzle-studio:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: career-keeper-drizzle
+    restart: unless-stopped
+    ports:
+      - "4983:4983"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/career_keeper
+    command: npm run db:studio
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - career-keeper-network
+
 networks:
   career-keeper-network:
     driver: bridge

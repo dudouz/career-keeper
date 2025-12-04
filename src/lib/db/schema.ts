@@ -1,9 +1,9 @@
 import { relations } from "drizzle-orm"
 
 // Import all tables from split schema files
-export { accounts, sessions, users, verificationTokens } from "./schemas/users"
+export { accounts, sessions, users, userSessions, verificationTokens } from "./schemas/users"
 
-export { resumeHistory, resumes, resumeVersions } from "./schemas/resumes"
+export { resumeHistory, resumes, resumeSections, resumeVersions } from "./schemas/resumes"
 
 export { comparisonHistory, comparisons } from "./schemas/comparisons"
 
@@ -12,14 +12,15 @@ export { githubContributions } from "./schemas/github"
 // Import tables for relations (not exported)
 import { comparisonHistory, comparisons } from "./schemas/comparisons"
 import { githubContributions } from "./schemas/github"
-import { resumes, resumeVersions } from "./schemas/resumes"
-import { users } from "./schemas/users"
+import { resumes, resumeSections, resumeVersions } from "./schemas/resumes"
+import { sessions, users, userSessions } from "./schemas/users"
 
 // Relations - defined here to avoid circular dependencies
 export const usersRelations = relations(users, ({ many }) => ({
   resumes: many(resumes),
   githubContributions: many(githubContributions),
-  // sessions: many(userSessions),
+  sessions: many(sessions),
+  userSessions: many(userSessions),
 }))
 
 export const resumesRelations = relations(resumes, ({ one, many }) => ({
@@ -27,7 +28,15 @@ export const resumesRelations = relations(resumes, ({ one, many }) => ({
     fields: [resumes.userId],
     references: [users.id],
   }),
+  sections: many(resumeSections),
   versions: many(resumeVersions),
+}))
+
+export const resumeSectionsRelations = relations(resumeSections, ({ one }) => ({
+  resume: one(resumes, {
+    fields: [resumeSections.resumeId],
+    references: [resumes.id],
+  }),
 }))
 
 export const resumeVersionsRelations = relations(resumeVersions, ({ one }) => ({
@@ -54,4 +63,11 @@ export const comparisonsRelations = relations(comparisons, ({ one, many }) => ({
     references: [resumes.id],
   }),
   history: many(comparisonHistory),
+}))
+
+export const userSessionsRelations = relations(userSessions, ({ one }) => ({
+  user: one(users, {
+    fields: [userSessions.userId],
+    references: [users.id],
+  }),
 }))

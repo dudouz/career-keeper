@@ -46,12 +46,22 @@ export const sessions = pgTable("sessions", {
   expires: timestamp("expires").notNull(),
 })
 
+// User Session model (for JWT/session-based auth)
+export const userSessions = pgTable("user_sessions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  sessionToken: text("session_token").notNull().unique(),
+  githubPat: text("github_pat"), // Encrypted, session-only storage
+  openaiApiKey: text("openai_api_key"), // Encrypted, session-only storage
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+})
+
 // Verification Tokens (for email verification)
 export const verificationTokens = pgTable("verification_tokens", {
   identifier: text("identifier").notNull(),
   token: text("token").notNull().unique(),
   expires: timestamp("expires").notNull(),
 })
-
-// Relations will be defined in schema.ts to avoid circular dependencies
-

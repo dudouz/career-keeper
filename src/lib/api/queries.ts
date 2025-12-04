@@ -446,3 +446,33 @@ export function useDeleteResumeMutation() {
     },
   })
 }
+
+/**
+ * Reprocess a resume with the latest parser
+ */
+export function useReprocessResumeMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (resumeId: string) => {
+      const response = await fetch("/api/resume/reprocess", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ resumeId }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to reprocess resume")
+      }
+
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.resume.list() })
+      queryClient.refetchQueries({ queryKey: queryKeys.resume.list() })
+    },
+  })
+}

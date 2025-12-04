@@ -2,6 +2,7 @@ import type { InferSelectModel, InferInsertModel } from "drizzle-orm"
 import type {
   users,
   resumes,
+  resumeSections,
   resumeVersions,
   githubContributions,
   // userSessions,
@@ -13,6 +14,7 @@ import type {
 // Select types (reading from database)
 export type User = InferSelectModel<typeof users>
 export type Resume = InferSelectModel<typeof resumes>
+export type ResumeSection = InferSelectModel<typeof resumeSections>
 export type ResumeVersion = InferSelectModel<typeof resumeVersions>
 export type GitHubContribution = InferSelectModel<typeof githubContributions>
 // export type UserSession = InferSelectModel<typeof userSessions>
@@ -20,6 +22,7 @@ export type GitHubContribution = InferSelectModel<typeof githubContributions>
 // Insert types (writing to database)
 export type NewUser = InferInsertModel<typeof users>
 export type NewResume = InferInsertModel<typeof resumes>
+export type NewResumeSection = InferInsertModel<typeof resumeSections>
 export type NewResumeVersion = InferInsertModel<typeof resumeVersions>
 export type NewGitHubContribution = InferInsertModel<typeof githubContributions>
 // export type NewUserSession = InferInsertModel<typeof userSessions>
