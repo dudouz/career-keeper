@@ -1,7 +1,7 @@
 import { db } from "@/lib/db"
 import { brags, users } from "@/lib/db/schema"
 import type { BragReviewStatus } from "@/lib/db/types"
-import { and, count, eq, inArray, sql } from "drizzle-orm"
+import { and, count, eq, inArray, ne, sql } from "drizzle-orm"
 import type {
   BragStatsResult,
   BulkUpdateBragsParams,
@@ -49,6 +49,9 @@ export async function getBrags(params: GetBragsParams): Promise<GetBragsResult> 
 
   if (reviewStatus) {
     conditions.push(eq(brags.reviewStatus, reviewStatus))
+  } else {
+    // Exclude archived by default when no reviewStatus is specified
+    conditions.push(ne(brags.reviewStatus, "archived"))
   }
 
   if (type) {
@@ -212,6 +215,38 @@ export async function archiveBrag(bragId: string, userId: string) {
     .returning()
 
   return archivedBrag
+}
+
+/**
+ * Unarchive a brag (restore to reviewed status)
+ */
+export async function unarchiveBrag(bragId: string, userId: string) {
+  // Verify brag belongs to user and is archived
+  const [existingBrag] = await db
+    .select()
+    .from(brags)
+    .where(and(eq(brags.id, bragId), eq(brags.userId, userId)))
+    .limit(1)
+
+  if (!existingBrag) {
+    throw new Error("Brag not found or access denied")
+  }
+
+  if (existingBrag.reviewStatus !== "archived") {
+    throw new Error("Brag is not archived")
+  }
+
+  // Restore to reviewed status (or pending if it was never reviewed)
+  const [unarchivedBrag] = await db
+    .update(brags)
+    .set({
+      reviewStatus: existingBrag.reviewedAt ? "reviewed" : "pending",
+      updatedAt: new Date(),
+    })
+    .where(and(eq(brags.id, bragId), eq(brags.userId, userId)))
+    .returning()
+
+  return unarchivedBrag
 }
 
 /**

@@ -16,7 +16,7 @@ export function PendingBragsBadge() {
     <Link href="/dashboard/brag-list?filter=pending">
       <Badge variant="destructive" className="gap-1">
         <AlertCircle className="h-3 w-3" />
-        {stats.pending} {stats.pending === 1 ? "brag pendente" : "brags pendentes"}
+        {stats.pending}
       </Badge>
     </Link>
   )

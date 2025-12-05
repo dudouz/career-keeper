@@ -5,11 +5,25 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { useResumesQuery, useUpdateBragReviewMutation } from "@/lib/api/queries"
+import {
+  useResumesQuery,
+  useUnarchiveBragMutation,
+  useUpdateBragReviewMutation,
+} from "@/lib/api/queries"
 import type { BragType } from "@/lib/db/types"
 import type { ResumeWithSections } from "@/lib/services/resume/resume.types"
-import { ExternalLink, FileText, GitCommit, GitPullRequest, Rocket, X } from "lucide-react"
-import { useState } from "react"
+import {
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  FileText,
+  GitCommit,
+  GitPullRequest,
+  Rocket,
+  X,
+} from "lucide-react"
+import { useEffect, useState } from "react"
+import type { BragListItem } from "../brag-list/components/types"
 
 interface BragReviewModalProps {
   brag: {
@@ -24,14 +38,28 @@ interface BragReviewModalProps {
     resumeSectionId?: string | null
     techTags?: string[] | null
     customDescription?: string | null
+    reviewStatus?: "pending" | "reviewed" | "archived"
   }
+  allBrags: BragListItem[]
+  currentIndex: number
   onClose: () => void
   onSave: () => void
+  onNavigate: (bragId: string) => void
+  autoNavigateToNextPending?: boolean
 }
 
-export function BragReviewModal({ brag, onClose, onSave }: BragReviewModalProps) {
+export function BragReviewModal({
+  brag,
+  allBrags,
+  currentIndex,
+  onClose,
+  onSave,
+  onNavigate,
+  autoNavigateToNextPending = false,
+}: BragReviewModalProps) {
   const { data: resumesData } = useResumesQuery()
   const updateMutation = useUpdateBragReviewMutation()
+  const unarchiveMutation = useUnarchiveBragMutation()
 
   const [relevance, setRelevance] = useState<number | undefined>(brag.relevance || undefined)
   const [resumeSectionId, setResumeSectionId] = useState<string | null>(
@@ -41,10 +69,59 @@ export function BragReviewModal({ brag, onClose, onSave }: BragReviewModalProps)
   const [techTagInput, setTechTagInput] = useState("")
   const [customDescription, setCustomDescription] = useState<string>(brag.customDescription || "")
 
+  // Find previous and next brags
+  const previousBrag = currentIndex > 0 ? allBrags[currentIndex - 1] : null
+  const nextBrag = currentIndex < allBrags.length - 1 ? allBrags[currentIndex + 1] : null
+
+  // Find next pending brag
+  const findNextPendingBrag = () => {
+    const startIndex = currentIndex + 1
+    for (let i = startIndex; i < allBrags.length; i++) {
+      if (allBrags[i].reviewStatus === "pending") {
+        return allBrags[i]
+      }
+    }
+    // If not found after current, search from beginning
+    for (let i = 0; i < currentIndex; i++) {
+      if (allBrags[i].reviewStatus === "pending") {
+        return allBrags[i]
+      }
+    }
+    return null
+  }
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't handle keyboard shortcuts when typing in inputs
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        e.target instanceof HTMLSelectElement
+      ) {
+        return
+      }
+
+      if (e.key === "ArrowLeft" && previousBrag) {
+        e.preventDefault()
+        onNavigate(previousBrag.id)
+      } else if (e.key === "ArrowRight" && nextBrag) {
+        e.preventDefault()
+        onNavigate(nextBrag.id)
+      } else if (e.key === "Escape") {
+        e.preventDefault()
+        onClose()
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [previousBrag, nextBrag, onNavigate, onClose])
+
   // Get all resume sections from all resumes
-  const resumes = resumesData?.resumes || []
-  const allSections = resumes.flatMap((resume: ResumeWithSections) =>
-    resume.sections.map((section: ResumeWithSections["sections"][number]) => ({
+  const resumes = (resumesData?.resumes || []) as unknown as ResumeWithSections[]
+  const allSections = resumes.flatMap((resume) =>
+    resume.sections.map((section) => ({
       id: section.id,
       label: `${section.position} at ${section.company} (${section.startDate} - ${section.endDate || "Present"})`,
       resumeId: resume.id,
@@ -71,6 +148,20 @@ export function BragReviewModal({ brag, onClose, onSave }: BragReviewModalProps)
       customDescription: customDescription || null,
     })
     onSave()
+
+    // Auto-navigate to next pending brag if enabled
+    if (autoNavigateToNextPending) {
+      const nextPending = findNextPendingBrag()
+      if (nextPending) {
+        onNavigate(nextPending.id)
+        return
+      }
+      // If no next pending brag found, close modal
+      onClose()
+      return
+    }
+
+    // If no auto-navigate, close modal
     onClose()
   }
 
@@ -96,29 +187,55 @@ export function BragReviewModal({ brag, onClose, onSave }: BragReviewModalProps)
               <div className="mb-2 flex items-center gap-2">
                 {getTypeIcon()}
                 <Badge variant="secondary">{brag.type.toUpperCase()}</Badge>
+                <span className="text-xs text-muted-foreground">
+                  {currentIndex + 1} / {allBrags.length}
+                </span>
               </div>
               <CardTitle className="text-xl">{brag.title}</CardTitle>
               <p className="mt-1 text-sm text-muted-foreground">
                 {brag.repository} • {new Date(brag.date).toLocaleDateString()}
               </p>
             </div>
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              {/* Navigation buttons */}
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => previousBrag && onNavigate(previousBrag.id)}
+                  disabled={!previousBrag}
+                  title="Previous brag (←)"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => nextBrag && onNavigate(nextBrag.id)}
+                  disabled={!nextBrag}
+                  title="Next brag (→)"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+              <Button variant="ghost" size="sm" onClick={onClose} title="Fechar (Esc)">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Original Description */}
           {brag.description && (
             <div>
-              <label className="text-sm font-medium">Descrição Original</label>
+              <label className="text-sm font-medium">Original Description</label>
               <p className="mt-1 text-sm text-muted-foreground">{brag.description}</p>
             </div>
           )}
 
           {/* Relevance */}
           <div>
-            <label className="mb-2 block text-sm font-medium">Relevância (1-5)</label>
+            <label className="mb-2 block text-sm font-medium">Relevance (1-5)</label>
             <div className="flex gap-2">
               {[1, 2, 3, 4, 5].map((value) => (
                 <Button
@@ -137,14 +254,14 @@ export function BragReviewModal({ brag, onClose, onSave }: BragReviewModalProps)
           {/* Resume Section */}
           <div>
             <label className="mb-2 block text-sm font-medium">
-              Associar a Experiência do Currículo
+              Associate with Resume Experience
             </label>
             <select
               value={resumeSectionId || ""}
               onChange={(e) => setResumeSectionId(e.target.value || null)}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             >
-              <option value="">Nenhuma (não associar)</option>
+              <option value="">None (don't associate)</option>
               {allSections.map((section: { id: string; label: string; resumeId: string }) => (
                 <option key={section.id} value={section.id}>
                   {section.label}
@@ -155,7 +272,7 @@ export function BragReviewModal({ brag, onClose, onSave }: BragReviewModalProps)
 
           {/* Tech Tags */}
           <div>
-            <label className="mb-2 block text-sm font-medium">Tecnologias (Tags)</label>
+            <label className="mb-2 block text-sm font-medium">Technologies (Tags)</label>
             <div className="mb-2 flex gap-2">
               <Input
                 value={techTagInput}
@@ -166,10 +283,10 @@ export function BragReviewModal({ brag, onClose, onSave }: BragReviewModalProps)
                     handleAddTechTag()
                   }
                 }}
-                placeholder="Digite uma tecnologia e pressione Enter"
+                placeholder="Type a technology and press Enter"
               />
               <Button type="button" onClick={handleAddTechTag}>
-                Adicionar
+                Add
               </Button>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -191,24 +308,72 @@ export function BragReviewModal({ brag, onClose, onSave }: BragReviewModalProps)
           {/* Custom Description */}
           <div>
             <label className="mb-2 block text-sm font-medium">
-              Descrição Customizada (O que foi feito)
+              Custom Description (What was done)
             </label>
             <Textarea
               value={customDescription}
               onChange={(e) => setCustomDescription(e.target.value)}
-              placeholder="Descreva o que foi feito neste brag..."
+              placeholder="Describe what was done in this brag..."
               rows={4}
             />
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-2 border-t pt-4">
-            <Button variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSave} disabled={updateMutation.isPending}>
-              {updateMutation.isPending ? "Salvando..." : "Salvar Revisão"}
-            </Button>
+          <div className="flex justify-between border-t pt-4">
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => previousBrag && onNavigate(previousBrag.id)}
+                disabled={!previousBrag || updateMutation.isPending || unarchiveMutation.isPending}
+              >
+                <ChevronLeft className="mr-1 h-4 w-4" />
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => nextBrag && onNavigate(nextBrag.id)}
+                disabled={!nextBrag || updateMutation.isPending || unarchiveMutation.isPending}
+              >
+                Next
+                <ChevronRight className="ml-1 h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex gap-2">
+              {brag.reviewStatus === "archived" && (
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    await unarchiveMutation.mutateAsync(brag.id)
+                    onSave()
+                    onClose()
+                  }}
+                  disabled={unarchiveMutation.isPending || updateMutation.isPending}
+                >
+                  {unarchiveMutation.isPending ? "Unarchiving..." : "Unarchive"}
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                onClick={onClose}
+                disabled={updateMutation.isPending || unarchiveMutation.isPending}
+              >
+                Cancel
+              </Button>
+              {brag.reviewStatus !== "archived" && (
+                <Button
+                  onClick={handleSave}
+                  disabled={updateMutation.isPending || unarchiveMutation.isPending}
+                >
+                  {updateMutation.isPending
+                    ? "Saving..."
+                    : autoNavigateToNextPending
+                      ? "Save & Continue"
+                      : "Save"}
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Link to GitHub */}
@@ -216,7 +381,7 @@ export function BragReviewModal({ brag, onClose, onSave }: BragReviewModalProps)
             <Button variant="outline" size="sm" asChild className="w-full">
               <a href={brag.url} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="mr-2 h-4 w-4" />
-                Ver no GitHub
+                View on GitHub
               </a>
             </Button>
           </div>

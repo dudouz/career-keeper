@@ -3,7 +3,13 @@
  * All React Query operations are defined here for consistency and reusability
  */
 
-import type { BragReviewStatus, BragType, GitHubContributionData, ResumeContent } from "@/lib/db/types"
+import type {
+  BragReviewStatus,
+  BragType,
+  GitHubContributionData,
+  Resume,
+  ResumeContent,
+} from "@/lib/db/types"
 import { checkGitHubRateLimit, validateGitHubToken } from "@/lib/github/service"
 import {
   useMutation,
@@ -374,7 +380,9 @@ export function useResumesQuery() {
       if (!response.ok) {
         throw new Error("Failed to fetch resumes")
       }
-      return response.json()
+      return response.json() as Promise<{
+        resumes: Resume[]
+      }>
     },
   })
 }
@@ -546,7 +554,10 @@ export function useBragsQuery(
  * Fetch brag statistics
  */
 export function useBragStatsQuery(
-  options?: Omit<UseQueryOptions<{ pending: number; reviewed: number; archived: number; total: number }>, "queryKey" | "queryFn">
+  options?: Omit<
+    UseQueryOptions<{ pending: number; reviewed: number; archived: number; total: number }>,
+    "queryKey" | "queryFn"
+  >
 ) {
   return useQuery({
     queryKey: queryKeys.brags.stats(),
@@ -618,6 +629,33 @@ export function useArchiveBragMutation() {
       if (!response.ok) {
         const error = await response.json()
         throw new Error(error.error || "Failed to archive brag")
+      }
+
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.brags.all })
+    },
+  })
+}
+
+/**
+ * Unarchive a brag
+ */
+export function useUnarchiveBragMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (bragId: string) => {
+      const response = await fetch(`/api/brags/${bragId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ unarchive: true }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to unarchive brag")
       }
 
       return response.json()

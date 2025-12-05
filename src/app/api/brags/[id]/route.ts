@@ -1,19 +1,27 @@
 import { auth } from "@/auth"
-import { archiveBrag, updateBragReview } from "@/lib/services/brags"
+import { archiveBrag, unarchiveBrag, updateBragReview } from "@/lib/services/brags"
 import { NextResponse } from "next/server"
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    const { id } = await params
     const body = await request.json()
-    const { relevance, resumeSectionId, techTags, customDescription } = body
+    const { relevance, resumeSectionId, techTags, customDescription, unarchive } = body
 
+    // Handle unarchive action
+    if (unarchive === true) {
+      const brag = await unarchiveBrag(id, session.user.id)
+      return NextResponse.json({ success: true, brag })
+    }
+
+    // Handle regular update
     const brag = await updateBragReview({
-      bragId: params.id,
+      bragId: id,
       userId: session.user.id,
       relevance,
       resumeSectionId,
@@ -30,14 +38,15 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const brag = await archiveBrag(params.id, session.user.id)
+    const { id } = await params
+    const brag = await archiveBrag(id, session.user.id)
 
     return NextResponse.json({ success: true, brag })
   } catch (error) {
