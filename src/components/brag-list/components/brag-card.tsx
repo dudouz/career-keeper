@@ -18,16 +18,18 @@ export function BragCard({ brag, isSelected, onSelect, onReview }: BragCardProps
 
   return (
     <Card
-      className={`transition-shadow hover:shadow-md ${
-        isSelected ? "ring-2 ring-blue-500" : ""
-      }`}
+      className={`transition-shadow hover:shadow-md ${isSelected ? "ring-2 ring-blue-500" : ""}`}
     >
       <CardContent className="pt-6">
         <div className="flex items-start gap-4">
           {/* Checkbox */}
           <Checkbox
             checked={isSelected}
-            onCheckedChange={() => onSelect()}
+            onCheckedChange={(checked) => {
+              if (checked !== isSelected) {
+                onSelect()
+              }
+            }}
             className="mt-1"
           />
 
@@ -42,9 +44,7 @@ export function BragCard({ brag, isSelected, onSelect, onReview }: BragCardProps
                   Pending
                 </Badge>
               )}
-              {brag.relevance && (
-                <Badge variant="outline">Relevance: {brag.relevance}/5</Badge>
-              )}
+              {brag.relevance && <Badge variant="outline">Relevance: {brag.relevance}/5</Badge>}
             </div>
             <h3 className="text-lg font-semibold">{brag.title}</h3>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -89,4 +89,3 @@ export function BragCard({ brag, isSelected, onSelect, onReview }: BragCardProps
     </Card>
   )
 }
-
