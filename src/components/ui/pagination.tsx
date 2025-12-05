@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react"
 import * as React from "react"
 
 import { Button } from "@/components/ui/button"
+import { PAGINATION } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 
 interface PaginationProps extends React.HTMLAttributes<HTMLElement> {
@@ -10,27 +11,34 @@ interface PaginationProps extends React.HTMLAttributes<HTMLElement> {
   pageSize: number
   total: number
   onPageChange: (page: number) => void
-  onPageSizeChange?: (pageSize: number) => void
+  onPageSizeChange?: (pageSize: number) => void // Reserved for future use
 }
 
 function Pagination({
   className,
   currentPage,
   totalPages,
-  pageSize,
-  total,
+  pageSize: _pageSize,
+  total: _total,
   onPageChange,
-  onPageSizeChange,
+  onPageSizeChange: _onPageSizeChange,
   ...props
 }: PaginationProps) {
-  const startItem = (currentPage - 1) * pageSize + 1
-  const endItem = Math.min(currentPage * pageSize, total)
+  // Calculate start and end items for display (currently unused but available for future use)
+  // const startItem = (currentPage - 1) * pageSize + 1
+  // const endItem = Math.min(currentPage * pageSize, total)
 
   const getPageNumbers = () => {
     const pages: (number | "ellipsis")[] = []
-    const maxVisible = 7
+    const {
+      MAX_VISIBLE_PAGES,
+      PAGES_NEAR_START_THRESHOLD,
+      PAGES_NEAR_START_MAX,
+      PAGES_NEAR_END_THRESHOLD,
+      PAGES_NEAR_END_OFFSET,
+    } = PAGINATION
 
-    if (totalPages <= maxVisible) {
+    if (totalPages <= MAX_VISIBLE_PAGES) {
       // Show all pages
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i)
@@ -39,17 +47,17 @@ function Pagination({
       // Always show first page
       pages.push(1)
 
-      if (currentPage <= 3) {
+      if (currentPage <= PAGES_NEAR_START_THRESHOLD) {
         // Near the start
-        for (let i = 2; i <= 4; i++) {
+        for (let i = 2; i <= PAGES_NEAR_START_MAX; i++) {
           pages.push(i)
         }
         pages.push("ellipsis")
         pages.push(totalPages)
-      } else if (currentPage >= totalPages - 2) {
+      } else if (currentPage >= totalPages - PAGES_NEAR_END_THRESHOLD) {
         // Near the end
         pages.push("ellipsis")
-        for (let i = totalPages - 3; i <= totalPages; i++) {
+        for (let i = totalPages - PAGES_NEAR_END_OFFSET; i <= totalPages; i++) {
           pages.push(i)
         }
       } else {

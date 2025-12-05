@@ -3,6 +3,7 @@
  * All React Query operations are defined here for consistency and reusability
  */
 
+import { PAGINATION } from "@/lib/constants"
 import type {
   BragReviewStatus,
   BragType,
@@ -530,7 +531,7 @@ export function useBragsQuery(
     pageSize?: number
   }
 ) {
-  const { reviewStatus, type, page = 1, pageSize = 20, ...queryOptions } = options || {}
+  const { reviewStatus, type, page = PAGINATION.DEFAULT_PAGE, pageSize = PAGINATION.DEFAULT_PAGE_SIZE, ...queryOptions } = options || {}
 
   return useQuery({
     queryKey: queryKeys.brags.list({ reviewStatus, type, page, pageSize }),

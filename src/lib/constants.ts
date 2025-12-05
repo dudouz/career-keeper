@@ -51,3 +51,14 @@ export const RATE_LIMIT = {
   MAX_REQUESTS_PER_MINUTE: 10,
   WINDOW_MS: 60 * 1000, // 1 minute in milliseconds
 } as const
+
+// Pagination Constants
+export const PAGINATION = {
+  DEFAULT_PAGE: 1,
+  DEFAULT_PAGE_SIZE: 20,
+  MAX_VISIBLE_PAGES: 7,
+  PAGES_NEAR_START_THRESHOLD: 3,
+  PAGES_NEAR_START_MAX: 4,
+  PAGES_NEAR_END_THRESHOLD: 2,
+  PAGES_NEAR_END_OFFSET: 3,
+} as const

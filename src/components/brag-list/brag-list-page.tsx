@@ -3,6 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { Pagination } from "@/components/ui/pagination"
+import { PAGINATION } from "@/lib/constants"
 import { useBragsQuery, useBragStatsQuery, useResumesQuery } from "@/lib/api/queries"
 import type { BragType } from "@/lib/db/types"
 import type { ResumeWithSections } from "@/lib/services/resume/resume.types"
@@ -30,8 +31,8 @@ export function BragListPage() {
   const [selectedBrags, setSelectedBrags] = useState<Set<string>>(new Set())
   const [selectedBragForReview, setSelectedBragForReview] = useState<string | null>(null)
   const [showBulkEdit, setShowBulkEdit] = useState(false)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize, setPageSize] = useState(20)
+  const [currentPage, setCurrentPage] = useState(PAGINATION.DEFAULT_PAGE)
+  const [pageSize, setPageSize] = useState(PAGINATION.DEFAULT_PAGE_SIZE)
 
   // Bulk edit state
   const [bulkRelevance, setBulkRelevance] = useState<number | undefined>()
@@ -79,9 +80,9 @@ export function BragListPage() {
   const filteredBrags = filterBrags(brags, searchQuery)
   const sortedBrags = sortBrags(filteredBrags, sortOrder)
 
-  // Reset to page 1 when filters change
+  // Reset to first page when filters change
   useEffect(() => {
-    setCurrentPage(1)
+    setCurrentPage(PAGINATION.DEFAULT_PAGE)
   }, [reviewStatusFilter, typeFilter, searchQuery])
 
   // Close modal if selected brag is no longer in the list (e.g., after refetch or filter change)
