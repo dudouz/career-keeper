@@ -1,17 +1,17 @@
 import { db } from "@/lib/db"
 import { githubContributions, users } from "@/lib/db/schema"
 import { GitHubClient } from "@/lib/github/client"
-import { encryptToken, decryptToken } from "@/lib/github/encryption"
-import { eq, and, gte } from "drizzle-orm"
+import { decryptToken, encryptToken } from "@/lib/github/encryption"
+import { and, eq, gte } from "drizzle-orm"
 import type {
   ConnectGitHubParams,
   ConnectGitHubResult,
-  GitHubStatusResult,
-  ScanGitHubParams,
-  GitHubScanResult,
   GetContributionsParams,
   GetContributionsResult,
   GitHubContributionData,
+  GitHubScanResult,
+  GitHubStatusResult,
+  ScanGitHubParams,
 } from "./github.types"
 
 /**
@@ -65,7 +65,7 @@ export async function connectGitHub(params: ConnectGitHubParams): Promise<Connec
   const rateLimit = await githubClient.checkRateLimit()
 
   return {
-    username: validationResult.username,
+    username: validationResult.username ?? "User not provided",
     rateLimit: {
       remaining: rateLimit.remaining,
       limit: rateLimit.limit,
@@ -92,9 +92,7 @@ export async function getGitHubStatus(userId: string): Promise<GitHubStatusResul
 /**
  * Scan GitHub contributions and store in database
  */
-export async function scanGitHubContributions(
-  params: ScanGitHubParams
-): Promise<GitHubScanResult> {
+export async function scanGitHubContributions(params: ScanGitHubParams): Promise<GitHubScanResult> {
   const { userId } = params
 
   // Get encrypted GitHub PAT from user record
@@ -121,7 +119,10 @@ export async function scanGitHubContributions(
       .select()
       .from(githubContributions)
       .where(
-        and(eq(githubContributions.userId, userId), gte(githubContributions.createdAt, thirtyDaysAgo))
+        and(
+          eq(githubContributions.userId, userId),
+          gte(githubContributions.createdAt, thirtyDaysAgo)
+        )
       )
 
     if (recentScans.length >= 4) {
