@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useResumesQuery, useUpdateBragReviewMutation } from "@/lib/api/queries"
 import type { BragType } from "@/lib/db/types"
+import type { ResumeWithSections } from "@/lib/services/resume/resume.types"
 import { ExternalLink, FileText, GitCommit, GitPullRequest, Rocket, X } from "lucide-react"
 import { useState } from "react"
 
@@ -42,8 +43,8 @@ export function BragReviewModal({ brag, onClose, onSave }: BragReviewModalProps)
 
   // Get all resume sections from all resumes
   const resumes = resumesData?.resumes || []
-  const allSections = resumes.flatMap((resume) =>
-    resume.sections.map((section) => ({
+  const allSections = resumes.flatMap((resume: ResumeWithSections) =>
+    resume.sections.map((section: ResumeWithSections["sections"][number]) => ({
       id: section.id,
       label: `${section.position} at ${section.company} (${section.startDate} - ${section.endDate || "Present"})`,
       resumeId: resume.id,
@@ -144,7 +145,7 @@ export function BragReviewModal({ brag, onClose, onSave }: BragReviewModalProps)
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             >
               <option value="">Nenhuma (não associar)</option>
-              {allSections.map((section) => (
+              {allSections.map((section: { id: string; label: string; resumeId: string }) => (
                 <option key={section.id} value={section.id}>
                   {section.label}
                 </option>

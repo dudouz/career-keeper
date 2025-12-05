@@ -4,13 +4,9 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import {
-  useBragsQuery,
-  useBragStatsQuery,
-  useGitHubStatusQuery,
-  useResumesQuery,
-} from "@/lib/api/queries"
+import { useBragsQuery, useBragStatsQuery, useResumesQuery } from "@/lib/api/queries"
 import type { BragType } from "@/lib/db/types"
+import type { ResumeWithSections } from "@/lib/services/resume/resume.types"
 import {
   AlertCircle,
   Check,
@@ -28,17 +24,13 @@ import {
 import { useState } from "react"
 import { BragReviewModal } from "../brags/brag-review-modal"
 
-type ContributionType = "all" | "commit" | "pr" | "issue" | "release"
 type SortOrder = "newest" | "oldest" | "most-impact"
 type ReviewStatusFilter = "all" | "pending" | "reviewed"
 
 export function BragListPage() {
-  const { data: statusData } = useGitHubStatusQuery()
-  const isConnected = statusData?.connected || false
   const { data: stats } = useBragStatsQuery()
   const { data: resumesData } = useResumesQuery()
 
-  const [filter, setFilter] = useState<ContributionType>("all")
   const [typeFilter, setTypeFilter] = useState<BragType | "all">("all")
   const [reviewStatusFilter, setReviewStatusFilter] = useState<ReviewStatusFilter>("all")
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest")
@@ -66,18 +58,16 @@ export function BragListPage() {
 
   const brags = bragsData?.brags || []
   const resumes = resumesData?.resumes || []
-  const allSections = resumes.flatMap((resume) =>
-    resume.sections.map((section) => ({
-      id: section.id,
-      label: `${section.position} at ${section.company} (${section.startDate} - ${section.endDate || "Present"})`,
-    }))
+  const allSections: Array<{ id: string; label: string }> = resumes.flatMap(
+    (resume: ResumeWithSections) =>
+      resume.sections.map((section: ResumeWithSections["sections"][number]) => ({
+        id: section.id,
+        label: `${section.position} at ${section.company} (${section.startDate} - ${section.endDate || "Present"})`,
+      }))
   )
 
   // Filter and sort brags
   const filteredBrags = brags.filter((brag) => {
-    // Type filter
-    if (filter !== "all" && brag.type !== filter) return false
-
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
