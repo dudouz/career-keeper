@@ -17,7 +17,6 @@ import {
   useUnarchiveBragMutation,
   useUpdateBragReviewMutation,
 } from "@/lib/api/queries"
-import type { BragType } from "@/lib/db/types"
 import type { ResumeWithSections } from "@/lib/services/resume/resume.types"
 import {
   ChevronLeft,
@@ -33,20 +32,7 @@ import { useEffect, useState } from "react"
 import type { BragListItem } from "../brag-list/components/types"
 
 interface BragReviewModalProps {
-  brag: {
-    id: string
-    type: BragType
-    title: string
-    description?: string | null
-    date: Date
-    repository: string
-    url: string
-    relevance?: number | null
-    resumeSectionId?: string | null
-    techTags?: string[] | null
-    customDescription?: string | null
-    reviewStatus?: "pending" | "reviewed" | "archived"
-  }
+  brag: BragListItem
   allBrags: BragListItem[]
   currentIndex: number
   onClose: () => void
@@ -67,6 +53,9 @@ export function BragReviewModal({
   const { data: resumesData } = useResumesQuery()
   const updateMutation = useUpdateBragReviewMutation()
   const unarchiveMutation = useUnarchiveBragMutation()
+
+  // Normalize date to Date object
+  const bragDate = typeof brag.date === "string" ? new Date(brag.date) : brag.date
 
   const [relevance, setRelevance] = useState<number | undefined>(brag.relevance || undefined)
   const [resumeSectionId, setResumeSectionId] = useState<string | null>(
@@ -200,7 +189,7 @@ export function BragReviewModal({
               </div>
               <CardTitle className="text-xl">{brag.title}</CardTitle>
               <p className="mt-1 text-sm text-muted-foreground">
-                {brag.repository} • {new Date(brag.date).toLocaleDateString()}
+                {brag.repository} • {bragDate.toLocaleDateString()}
               </p>
             </div>
             <div className="flex items-center gap-2">

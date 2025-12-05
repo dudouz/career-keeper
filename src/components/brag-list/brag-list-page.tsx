@@ -284,23 +284,7 @@ export function BragListPage() {
 
           return (
             <BragReviewModal
-              brag={{
-                id: currentBrag.id,
-                type: currentBrag.type,
-                title: currentBrag.title,
-                description: currentBrag.description,
-                date:
-                  typeof currentBrag.date === "string"
-                    ? new Date(currentBrag.date)
-                    : currentBrag.date,
-                repository: currentBrag.repository,
-                url: currentBrag.url,
-                relevance: currentBrag.relevance,
-                resumeSectionId: currentBrag.resumeSectionId,
-                techTags: currentBrag.techTags,
-                customDescription: currentBrag.customDescription,
-                reviewStatus: currentBrag.reviewStatus,
-              }}
+              brag={currentBrag}
               allBrags={sortedBrags}
               currentIndex={currentIndex}
               onClose={() => setSelectedBragForReview(null)}
