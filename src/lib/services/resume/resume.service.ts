@@ -1,6 +1,6 @@
 import { db } from "@/lib/db"
 import { resumes, resumeSections, users } from "@/lib/db/schema"
-import { parseResumeFile } from "@/lib/resume/parser"
+import { parseResumeFile, parseResumeWithLLM } from "@/lib/resume/parser"
 import { decryptToken } from "@/lib/github/encryption"
 import { eq, and } from "drizzle-orm"
 import type {
@@ -264,8 +264,15 @@ export async function parseResumeWithAI(params: ParseResumeParams): Promise<Pars
       throw new Error("Resume not found")
     }
 
+    // Use rawContent if available, otherwise fall back to parsing from fileUrl
+    if (resume.rawContent) {
+      // Use rawContent directly for LLM parsing
+      return parseResumeWithLLM(resume.rawContent, openaiApiKey)
+    }
+
+    // Fallback to parsing from file if rawContent is not available
     if (!resume.fileUrl) {
-      throw new Error("Resume has no file to parse")
+      throw new Error("Resume has no file or rawContent to parse")
     }
 
     // Extract base64 data from data URL
