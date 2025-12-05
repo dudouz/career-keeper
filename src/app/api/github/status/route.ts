@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
-import { db } from "@/lib/db"
-import { users } from "@/lib/db/schema"
-import { eq } from "drizzle-orm"
+import { getGitHubStatus } from "@/lib/services/github"
 
 export async function GET() {
   try {
@@ -11,16 +9,10 @@ export async function GET() {
       return NextResponse.json({ connected: false }, { status: 200 })
     }
 
-    // Check if user has GitHub PAT
-    const [user] = await db
-      .select({ githubPat: users.githubPat, githubUsername: users.githubUsername })
-      .from(users)
-      .where(eq(users.id, session.user.id))
+    // Get GitHub status using service
+    const status = await getGitHubStatus(session.user.id)
 
-    return NextResponse.json({
-      connected: !!user?.githubPat,
-      username: user?.githubUsername || null,
-    })
+    return NextResponse.json(status)
   } catch (error) {
     console.error("GitHub status check error:", error)
     return NextResponse.json({ connected: false }, { status: 200 })

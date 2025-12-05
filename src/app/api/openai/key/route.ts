@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { z } from "zod"
-import { encryptToken, decryptToken } from "@/lib/github/encryption"
-import { db } from "@/lib/db"
-import { users } from "@/lib/db/schema"
-import { eq } from "drizzle-orm"
+import { saveOpenAIKey, getOpenAIKey, deleteOpenAIKey } from "@/lib/services/user"
 
 const keySchema = z.object({
   apiKey: z.string().min(1, "OpenAI API key is required"),
@@ -29,31 +26,14 @@ export async function POST(request: NextRequest) {
 
     const { apiKey } = validation.data
 
-    // Encrypt the API key
-    const encryptedKey = encryptToken(apiKey)
-
-    // Check if user exists
-    const [existingUser] = await db.select().from(users).where(eq(users.id, session.user.id))
-
-    if (existingUser) {
-      // Update existing user
-      await db
-        .update(users)
-        .set({ openaiApiKey: encryptedKey })
-        .where(eq(users.id, session.user.id))
-    } else {
-      // Create new user record for OAuth user
-      await db.insert(users).values({
-        id: session.user.id,
-        email: session.user.email!,
-        name: session.user.name,
-        image: session.user.image,
-        emailVerified: new Date(),
-        openaiApiKey: encryptedKey,
-        subscriptionTier: "basic",
-        subscriptionStatus: "active",
-      })
-    }
+    // Save OpenAI key using service
+    await saveOpenAIKey({
+      userId: session.user.id,
+      userEmail: session.user.email!,
+      userName: session.user.name,
+      userImage: session.user.image,
+      apiKey,
+    })
 
     return NextResponse.json({
       success: true,
@@ -72,25 +52,16 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const [user] = await db
-      .select({ openaiApiKey: users.openaiApiKey })
-      .from(users)
-      .where(eq(users.id, session.user.id))
+    // Get OpenAI key using service
+    const result = await getOpenAIKey(session.user.id)
 
-    if (!user?.openaiApiKey) {
-      return NextResponse.json({ hasKey: false })
-    }
-
-    // Return decrypted key
-    const decryptedKey = decryptToken(user.openaiApiKey)
-
-    return NextResponse.json({
-      hasKey: true,
-      apiKey: decryptedKey,
-    })
+    return NextResponse.json(result)
   } catch (error) {
     console.error("OpenAI key fetch error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+
+    // Handle specific error messages from service
+    const errorMessage = error instanceof Error ? error.message : "Internal server error"
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }
 
@@ -101,10 +72,8 @@ export async function DELETE() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    await db
-      .update(users)
-      .set({ openaiApiKey: null })
-      .where(eq(users.id, session.user.id))
+    // Delete OpenAI key using service
+    await deleteOpenAIKey(session.user.id)
 
     return NextResponse.json({
       success: true,

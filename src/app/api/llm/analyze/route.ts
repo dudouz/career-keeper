@@ -1,10 +1,6 @@
 import { auth } from "@/auth"
-import { db } from "@/lib/db"
-import { users } from "@/lib/db/schema"
-import { decryptToken } from "@/lib/github/encryption"
-import { LLMClient } from "@/lib/llm/client"
+import { analyzeContributions } from "@/lib/services/llm"
 import { rateLimit } from "@/lib/rate-limit"
-import { eq } from "drizzle-orm"
 import { NextRequest, NextResponse } from "next/server"
 
 const limiter = rateLimit({
@@ -29,21 +25,6 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Fetch OpenAI API key from database
-    const [user] = await db
-      .select({ openaiApiKey: users.openaiApiKey })
-      .from(users)
-      .where(eq(users.id, session.user.id))
-
-    if (!user?.openaiApiKey) {
-      return NextResponse.json(
-        { error: "OpenAI API key not found. Please add it in settings." },
-        { status: 400 }
-      )
-    }
-
-    const apiKey = decryptToken(user.openaiApiKey)
-
     // Parse request body
     const body = await req.json()
     const { contributions } = body
@@ -52,39 +33,39 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "GitHub contributions data is required" }, { status: 400 })
     }
 
-    // Create LLM client and analyze
-    const llmClient = new LLMClient({ apiKey })
-    const analysis = await llmClient.analyzeContributions(contributions)
-
-    // Estimate tokens used
-    const estimatedTokens = llmClient.estimateTokens(
-      JSON.stringify(contributions) + JSON.stringify(analysis)
-    )
+    // Analyze contributions using service
+    const result = await analyzeContributions({
+      userId: session.user.id,
+      contributions,
+    })
 
     return NextResponse.json({
       success: true,
-      data: analysis,
+      data: {
+        achievements: result.achievements,
+        skills: result.skills,
+        projects: result.projects,
+      },
       meta: {
-        estimatedTokens,
+        estimatedTokens: result.estimatedTokens,
         remaining: rateLimitResult.remaining,
       },
     })
   } catch (error) {
     console.error("LLM analyze error:", error)
 
-    // Handle OpenAI specific errors
-    if (error instanceof Error) {
-      if (error.message.includes("API key")) {
-        return NextResponse.json({ error: "Invalid OpenAI API key" }, { status: 401 })
-      }
-      if (error.message.includes("quota")) {
-        return NextResponse.json(
-          { error: "OpenAI API quota exceeded", details: error.message },
-          { status: 429 }
-        )
-      }
+    // Handle specific error messages from service
+    const errorMessage = error instanceof Error ? error.message : "Failed to analyze contributions"
+    let statusCode = 500
+
+    if (errorMessage.includes("API key not found") || errorMessage.includes("not configured")) {
+      statusCode = 400
+    } else if (errorMessage.includes("Invalid") || errorMessage.includes("decrypt")) {
+      statusCode = 401
+    } else if (errorMessage.includes("quota")) {
+      statusCode = 429
     }
 
-    return NextResponse.json({ error: "Failed to analyze contributions" }, { status: 500 })
+    return NextResponse.json({ error: errorMessage }, { status: statusCode })
   }
 }

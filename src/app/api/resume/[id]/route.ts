@@ -1,7 +1,5 @@
 import { auth } from "@/auth"
-import { db } from "@/lib/db"
-import { resumes } from "@/lib/db/schema"
-import { and, eq } from "drizzle-orm"
+import { deleteResume } from "@/lib/services/resume"
 import { NextRequest, NextResponse } from "next/server"
 
 export async function DELETE(
@@ -16,15 +14,11 @@ export async function DELETE(
 
     const { id: resumeId } = await params
 
-    // Delete resume (sections will be deleted via cascade)
-    const result = await db
-      .delete(resumes)
-      .where(and(eq(resumes.id, resumeId), eq(resumes.userId, session.user.id)))
-      .returning()
-
-    if (result.length === 0) {
-      return NextResponse.json({ error: "Resume not found" }, { status: 404 })
-    }
+    // Delete resume using service
+    await deleteResume({
+      userId: session.user.id,
+      resumeId,
+    })
 
     return NextResponse.json({
       success: true,
@@ -32,6 +26,11 @@ export async function DELETE(
     })
   } catch (error) {
     console.error("Resume delete error:", error)
-    return NextResponse.json({ error: "Failed to delete resume" }, { status: 500 })
+
+    // Handle specific error messages from service
+    const errorMessage = error instanceof Error ? error.message : "Failed to delete resume"
+    const statusCode = errorMessage.includes("not found") ? 404 : 500
+
+    return NextResponse.json({ error: errorMessage }, { status: statusCode })
   }
 }
