@@ -1,6 +1,8 @@
 "use client"
 
 import { Card, CardContent } from "@/components/ui/card"
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
+import { Pagination } from "@/components/ui/pagination"
 import { useBragsQuery, useBragStatsQuery, useResumesQuery } from "@/lib/api/queries"
 import type { BragType } from "@/lib/db/types"
 import type { ResumeWithSections } from "@/lib/services/resume/resume.types"
@@ -28,6 +30,8 @@ export function BragListPage() {
   const [selectedBrags, setSelectedBrags] = useState<Set<string>>(new Set())
   const [selectedBragForReview, setSelectedBragForReview] = useState<string | null>(null)
   const [showBulkEdit, setShowBulkEdit] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
 
   // Bulk edit state
   const [bulkRelevance, setBulkRelevance] = useState<number | undefined>()
@@ -35,6 +39,7 @@ export function BragListPage() {
   const [bulkTechTags, setBulkTechTags] = useState<string[]>([])
   const [bulkTechTagInput, setBulkTechTagInput] = useState("")
   const [isBulkUpdating, setIsBulkUpdating] = useState(false)
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false)
 
   // Map reviewStatus filter to query parameter - exclude archived by default when "all" is selected
   const reviewStatusMap: Record<
@@ -54,10 +59,14 @@ export function BragListPage() {
   } = useBragsQuery({
     reviewStatus: reviewStatusMap[reviewStatusFilter],
     type: typeFilter === "all" ? undefined : typeFilter,
+    page: currentPage,
+    pageSize,
     enabled: true,
   })
 
   const brags = bragsData?.brags || []
+  const totalBrags = bragsData?.total || 0
+  const totalPages = Math.ceil(totalBrags / pageSize)
   const resumes = (resumesData?.resumes || []) as unknown as ResumeWithSections[]
   const allSections: Array<{ id: string; label: string }> = resumes.flatMap((resume) =>
     resume.sections.map((section) => ({
@@ -66,9 +75,14 @@ export function BragListPage() {
     }))
   )
 
-  // Filter and sort brags
+  // Filter and sort brags (client-side for current page only)
   const filteredBrags = filterBrags(brags, searchQuery)
   const sortedBrags = sortBrags(filteredBrags, sortOrder)
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [reviewStatusFilter, typeFilter, searchQuery])
 
   // Close modal if selected brag is no longer in the list (e.g., after refetch or filter change)
   useEffect(() => {
@@ -144,10 +158,8 @@ export function BragListPage() {
     }
   }
 
-  const handleBulkArchive = async () => {
+  const performBulkArchive = async () => {
     if (selectedBrags.size === 0) return
-
-    if (!confirm(`Archive ${selectedBrags.size} brag(s)?`)) return
 
     setIsBulkUpdating(true)
     try {
@@ -173,6 +185,11 @@ export function BragListPage() {
     } finally {
       setIsBulkUpdating(false)
     }
+  }
+
+  const handleBulkArchive = () => {
+    if (selectedBrags.size === 0) return
+    setShowArchiveConfirm(true)
   }
 
   const handleAddBulkTechTag = (tag: string) => {
@@ -214,11 +231,28 @@ export function BragListPage() {
       {stats && (
         <PendingBragsAlert
           pendingCount={stats.pending}
-          onReviewClick={() => setReviewStatusFilter("pending")}
+          onReviewClick={() => {
+            // Find first pending brag from current list (no filter change, no refetch)
+            const firstPendingBrag = brags.find((brag) => brag.reviewStatus === "pending")
+            if (firstPendingBrag) {
+              setSelectedBragForReview(firstPendingBrag.id)
+            }
+          }}
         />
       )}
 
       {stats && <BragStats stats={stats} selectedCount={selectedBrags.size} />}
+
+      <ConfirmationDialog
+        open={showArchiveConfirm}
+        onOpenChange={setShowArchiveConfirm}
+        title="Archive Brags"
+        description={`Are you sure you want to archive ${selectedBrags.size} brag(s)?`}
+        confirmText="Archive"
+        cancelText="Cancel"
+        variant="destructive"
+        onConfirm={performBulkArchive}
+      />
 
       {showBulkEdit && selectedBrags.size > 0 && (
         <BulkEditPanel
@@ -263,12 +297,38 @@ export function BragListPage() {
         onClearSelection={() => setSelectedBrags(new Set())}
       />
 
+      {totalBrags > 0 && (
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div>
+            Showing <span className="font-medium text-foreground">{((currentPage - 1) * pageSize) + 1}</span> to{" "}
+            <span className="font-medium text-foreground">{Math.min(currentPage * pageSize, totalBrags)}</span> of{" "}
+            <span className="font-medium text-foreground">{totalBrags}</span> results
+            {totalPages > 1 && (
+              <span className="ml-2">
+                (Page <span className="font-medium text-foreground">{currentPage}</span> of{" "}
+                <span className="font-medium text-foreground">{totalPages}</span>)
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       <BragList
         brags={sortedBrags}
         selectedBrags={selectedBrags}
         onSelectBrag={toggleSelectBrag}
         onReviewBrag={(bragId) => setSelectedBragForReview(bragId)}
       />
+
+      {totalBrags > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          total={totalBrags}
+          onPageChange={setCurrentPage}
+        />
+      )}
 
       {selectedBragForReview &&
         (() => {

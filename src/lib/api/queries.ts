@@ -52,7 +52,7 @@ export const queryKeys = {
   // Brags
   brags: {
     all: ["brags"] as const,
-    list: (filters?: { reviewStatus?: string; type?: string }) =>
+    list: (filters?: { reviewStatus?: string; type?: string; page?: number; pageSize?: number }) =>
       [...queryKeys.brags.all, "list", filters] as const,
     stats: () => [...queryKeys.brags.all, "stats"] as const,
     detail: (id: string) => [...queryKeys.brags.all, "detail", id] as const,
@@ -498,7 +498,7 @@ export function useReprocessResumeMutation() {
 // =============================================================================
 
 /**
- * Fetch brags with optional filters
+ * Fetch brags with optional filters and pagination
  */
 export function useBragsQuery(
   options?: Omit<
@@ -526,18 +526,21 @@ export function useBragsQuery(
   > & {
     reviewStatus?: BragReviewStatus
     type?: BragType
+    page?: number
+    pageSize?: number
   }
 ) {
-  const { reviewStatus, type, ...queryOptions } = options || {}
+  const { reviewStatus, type, page = 1, pageSize = 20, ...queryOptions } = options || {}
 
   return useQuery({
-    queryKey: queryKeys.brags.list({ reviewStatus, type }),
+    queryKey: queryKeys.brags.list({ reviewStatus, type, page, pageSize }),
     queryFn: async () => {
       const params = new URLSearchParams()
       if (reviewStatus) params.append("reviewStatus", reviewStatus)
       if (type) params.append("type", type)
       if (queryOptions?.enabled !== false) {
-        params.append("limit", "50")
+        params.append("limit", String(pageSize))
+        params.append("offset", String((page - 1) * pageSize))
       }
 
       const response = await fetch(`/api/brags?${params.toString()}`)
