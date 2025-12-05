@@ -1,11 +1,11 @@
-import type { InferSelectModel, InferInsertModel } from "drizzle-orm"
+import type { InferInsertModel, InferSelectModel } from "drizzle-orm"
 import type {
-  users,
+  brags,
+  githubContributions,
   resumes,
   resumeSections,
   resumeVersions,
-  githubContributions,
-  // userSessions,
+  users,
 } from "./schema"
 
 // TODO: Should we type with a zod schema?
@@ -17,6 +17,7 @@ export type Resume = InferSelectModel<typeof resumes>
 export type ResumeSection = InferSelectModel<typeof resumeSections>
 export type ResumeVersion = InferSelectModel<typeof resumeVersions>
 export type GitHubContribution = InferSelectModel<typeof githubContributions>
+export type Brag = InferSelectModel<typeof brags>
 // export type UserSession = InferSelectModel<typeof userSessions>
 
 // Insert types (writing to database)
@@ -25,6 +26,7 @@ export type NewResume = InferInsertModel<typeof resumes>
 export type NewResumeSection = InferInsertModel<typeof resumeSections>
 export type NewResumeVersion = InferInsertModel<typeof resumeVersions>
 export type NewGitHubContribution = InferInsertModel<typeof githubContributions>
+export type NewBrag = InferInsertModel<typeof brags>
 // export type NewUserSession = InferInsertModel<typeof userSessions>
 
 // Subscription tiers
@@ -131,4 +133,15 @@ export interface Release {
   repository: string
   url: string
   downloadCount?: number
+}
+
+// Brag types
+export type BragType = "commit" | "pr" | "issue" | "release"
+export type BragReviewStatus = "pending" | "reviewed" | "archived"
+
+export interface BragReviewData {
+  relevance?: number // 1-5
+  resumeSectionId?: string
+  techTags?: string[]
+  customDescription?: string
 }

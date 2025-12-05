@@ -2,6 +2,7 @@ import { db } from "@/lib/db"
 import { githubContributions, users } from "@/lib/db/schema"
 import { GitHubClient } from "@/lib/github/client"
 import { decryptToken, encryptToken } from "@/lib/github/encryption"
+import { createBrag } from "@/lib/services/brags"
 import { and, eq, gte } from "drizzle-orm"
 import type {
   ConnectGitHubParams,
@@ -170,10 +171,106 @@ export async function scanGitHubContributions(params: ScanGitHubParams): Promise
     })
   }
 
+  // Create pending brags from contributions
+  await createBragsFromContributions(userId, contributions)
+
   return {
     contributions,
     message: "GitHub contributions scanned successfully",
   }
+}
+
+/**
+ * Create pending brags from GitHub contributions
+ */
+async function createBragsFromContributions(
+  userId: string,
+  contributions: GitHubContributionData
+): Promise<void> {
+  const createdBrags: string[] = []
+
+  // Create brags from commits
+  for (const commit of contributions.commits) {
+    try {
+      await createBrag({
+        userId,
+        type: "commit",
+        title: commit.message,
+        description: commit.message,
+        date: new Date(commit.date),
+        repository: commit.repository,
+        url: commit.url,
+        githubId: commit.sha,
+        githubType: `commit:${commit.sha}`,
+      })
+      createdBrags.push(`commit:${commit.sha}`)
+    } catch {
+      // Skip duplicates (already handled by createBrag)
+      console.log(`[GitHub Service] Skipped duplicate commit: ${commit.sha}`)
+    }
+  }
+
+  // Create brags from pull requests
+  for (const pr of contributions.pullRequests) {
+    try {
+      await createBrag({
+        userId,
+        type: "pr",
+        title: pr.title,
+        date: new Date(pr.createdAt),
+        repository: pr.repository,
+        url: pr.url,
+        githubId: pr.number.toString(),
+        githubType: `pr:${pr.repository}:${pr.number}`,
+      })
+      createdBrags.push(`pr:${pr.repository}:${pr.number}`)
+    } catch {
+      console.log(`[GitHub Service] Skipped duplicate PR: ${pr.repository}#${pr.number}`)
+    }
+  }
+
+  // Create brags from issues
+  for (const issue of contributions.issues) {
+    try {
+      await createBrag({
+        userId,
+        type: "issue",
+        title: issue.title,
+        date: new Date(issue.createdAt),
+        repository: issue.repository,
+        url: issue.url,
+        githubId: issue.number.toString(),
+        githubType: `issue:${issue.repository}:${issue.number}`,
+      })
+      createdBrags.push(`issue:${issue.repository}:${issue.number}`)
+    } catch {
+      console.log(`[GitHub Service] Skipped duplicate issue: ${issue.repository}#${issue.number}`)
+    }
+  }
+
+  // Create brags from releases
+  for (const release of contributions.releases) {
+    try {
+      await createBrag({
+        userId,
+        type: "release",
+        title: release.name,
+        description: release.body,
+        date: new Date(release.createdAt),
+        repository: release.repository,
+        url: release.url,
+        githubId: release.tagName,
+        githubType: `release:${release.repository}:${release.tagName}`,
+      })
+      createdBrags.push(`release:${release.repository}:${release.tagName}`)
+    } catch {
+      console.log(
+        `[GitHub Service] Skipped duplicate release: ${release.repository}@${release.tagName}`
+      )
+    }
+  }
+
+  console.log(`[GitHub Service] Created ${createdBrags.length} pending brags from contributions`)
 }
 
 /**

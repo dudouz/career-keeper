@@ -263,9 +263,10 @@ Rules:
 - Technologies used inside job descriptions must go into "technologies".
 
 Resume text:
+${rawContent}
 `
 
-  const fullPrompt = prompt.replace("<<<TEXT_HERE>>>", rawContent)
+  const fullPrompt = prompt
 
   const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini", // Using GPT-4o-mini as a small, fast model

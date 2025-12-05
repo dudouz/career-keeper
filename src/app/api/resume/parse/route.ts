@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
-import { parseResumeWithAI } from "@/lib/services/resume"
+import { parseResumeWithAI, updateResumeWithLLM } from "@/lib/services/resume"
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 const ALLOWED_TYPES = [
@@ -20,23 +20,23 @@ export async function POST(request: NextRequest) {
     const contentType = request.headers.get("content-type") || ""
 
     if (contentType.includes("application/json")) {
-      // Parse existing resume by ID
+      // Parse existing resume by ID and update database
       const { resumeId } = await request.json()
 
       if (!resumeId) {
         return NextResponse.json({ error: "Resume ID is required" }, { status: 400 })
       }
 
-      // Parse resume using service
-      const parsed = await parseResumeWithAI({
+      // Parse and update resume using service
+      const updatedResume = await updateResumeWithLLM({
         userId: session.user.id,
         resumeId,
       })
 
       return NextResponse.json({
         success: true,
-        data: parsed,
-        message: "Resume parsed successfully",
+        resume: updatedResume,
+        message: "Resume parsed and updated successfully",
       })
     } else if (contentType.includes("multipart/form-data")) {
       // Parse uploaded file (without saving to database)

@@ -1,5 +1,6 @@
 "use client"
 
+import { PendingBragsBadge } from "@/components/brags/pending-brags-badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { signOut } from "next-auth/react"
@@ -27,16 +28,18 @@ export function DashboardNav() {
         </Link>
         <div className="hidden items-center gap-6 md:flex">
           {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "text-sm font-medium transition-colors hover:text-primary",
-                pathname === item.href ? "text-foreground" : "text-muted-foreground"
-              )}
-            >
-              {item.label}
-            </Link>
+            <div key={item.href} className="flex items-center gap-2">
+              <Link
+                href={item.href}
+                className={cn(
+                  "text-sm font-medium transition-colors hover:text-primary",
+                  pathname === item.href ? "text-foreground" : "text-muted-foreground"
+                )}
+              >
+                {item.label}
+              </Link>
+              {item.href === "/dashboard/brag-list" && <PendingBragsBadge />}
+            </div>
           ))}
         </div>
       </div>

@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
-import { uploadResume, getUserResumes } from "@/lib/services/resume"
+import { getUserResumes, uploadResume } from "@/lib/services/resume"
+import { NextRequest, NextResponse } from "next/server"
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 const ALLOWED_TYPES = [
@@ -33,10 +33,7 @@ export async function POST(request: NextRequest) {
 
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        { error: "File too large. Maximum size is 5MB." },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: "File too large. Maximum size is 5MB." }, { status: 400 })
     }
 
     // Upload resume using service
@@ -84,4 +81,3 @@ export async function GET() {
     return NextResponse.json({ error: "Failed to get resumes" }, { status: 500 })
   }
 }
-

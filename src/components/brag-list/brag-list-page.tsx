@@ -1,178 +1,193 @@
 "use client"
 
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { useGitHubContributionsQuery, useGitHubStatusQuery } from "@/lib/api/queries"
-import {
-  AlertCircle,
-  Code2,
-  ExternalLink,
-  FileDown,
-  FileText,
-  GitCommit,
-  GitPullRequest,
-  Loader2,
-  Rocket,
-  Search,
-  Sparkles,
-} from "lucide-react"
-import { useState } from "react"
-
-type ContributionType = "all" | "commit" | "pr" | "issue" | "release"
-type SortOrder = "newest" | "oldest" | "most-impact"
+import { Card, CardContent } from "@/components/ui/card"
+import { useBragsQuery, useBragStatsQuery, useResumesQuery } from "@/lib/api/queries"
+import type { BragType } from "@/lib/db/types"
+import type { ResumeWithSections } from "@/lib/services/resume/resume.types"
+import { Loader2 } from "lucide-react"
+import { useEffect, useState } from "react"
+import { BragReviewModal } from "../brags/brag-review-modal"
+import { BragFilters } from "./components/brag-filters"
+import { BragHeader } from "./components/brag-header"
+import { BragList } from "./components/brag-list"
+import { BragSelectionControls } from "./components/brag-selection-controls"
+import { BragStats } from "./components/brag-stats"
+import { BulkEditPanel } from "./components/bulk-edit-panel"
+import { PendingBragsAlert } from "./components/pending-brags-alert"
+import type { ReviewStatusFilter, SortOrder } from "./components/types"
+import { exportBragsToMarkdown, filterBrags, sortBrags } from "./components/utils"
 
 export function BragListPage() {
-  const { data: statusData } = useGitHubStatusQuery()
-  const isConnected = statusData?.connected || false
-  const { data, isLoading } = useGitHubContributionsQuery({
-    enabled: isConnected, // Only fetch when GitHub is connected
-  })
-  const contributions = data?.contributions
+  const { data: stats } = useBragStatsQuery()
+  const { data: resumesData } = useResumesQuery()
 
-  const [filter, setFilter] = useState<ContributionType>("all")
+  const [typeFilter, setTypeFilter] = useState<BragType | "all">("all")
+  const [reviewStatusFilter, setReviewStatusFilter] = useState<ReviewStatusFilter>("all")
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest")
   const [searchQuery, setSearchQuery] = useState("")
+  const [selectedBrags, setSelectedBrags] = useState<Set<string>>(new Set())
+  const [selectedBragForReview, setSelectedBragForReview] = useState<string | null>(null)
+  const [showBulkEdit, setShowBulkEdit] = useState(false)
 
-  const filterContributions = () => {
-    if (!contributions) return []
+  // Bulk edit state
+  const [bulkRelevance, setBulkRelevance] = useState<number | undefined>()
+  const [bulkResumeSectionId, setBulkResumeSectionId] = useState<string | null>(null)
+  const [bulkTechTags, setBulkTechTags] = useState<string[]>([])
+  const [bulkTechTagInput, setBulkTechTagInput] = useState("")
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false)
 
-    let items: Array<{
-      type: string
-      title: string
-      date: string
-      repository: string
-      url: string
-      significance?: "high" | "medium" | "low"
-      description?: string
-    }> = []
+  // Map reviewStatus filter to query parameter - exclude archived by default when "all" is selected
+  const reviewStatusMap: Record<
+    ReviewStatusFilter,
+    "pending" | "reviewed" | "archived" | undefined
+  > = {
+    all: undefined, // Exclude archived by default
+    pending: "pending",
+    reviewed: "reviewed",
+    archived: "archived",
+  }
 
-    // Collect all contributions
-    if (filter === "all" || filter === "commit") {
-      items.push(
-        ...contributions.commits.map((c) => ({
-          type: "commit",
-          title: c.message,
-          date: c.date,
-          repository: c.repository,
-          url: c.url,
-          significance:
-            c.message.toLowerCase().includes("feat") || c.message.toLowerCase().includes("feature")
-              ? ("high" as const)
-              : ("low" as const),
-        }))
-      )
+  const {
+    data: bragsData,
+    isLoading,
+    refetch,
+  } = useBragsQuery({
+    reviewStatus: reviewStatusMap[reviewStatusFilter],
+    type: typeFilter === "all" ? undefined : typeFilter,
+    enabled: true,
+  })
+
+  const brags = bragsData?.brags || []
+  const resumes = (resumesData?.resumes || []) as unknown as ResumeWithSections[]
+  const allSections: Array<{ id: string; label: string }> = resumes.flatMap((resume) =>
+    resume.sections.map((section) => ({
+      id: section.id,
+      label: `${section.position} at ${section.company} (${section.startDate} - ${section.endDate || "Present"})`,
+    }))
+  )
+
+  // Filter and sort brags
+  const filteredBrags = filterBrags(brags, searchQuery)
+  const sortedBrags = sortBrags(filteredBrags, sortOrder)
+
+  // Close modal if selected brag is no longer in the list (e.g., after refetch or filter change)
+  useEffect(() => {
+    if (selectedBragForReview && !sortedBrags.find((b) => b.id === selectedBragForReview)) {
+      setSelectedBragForReview(null)
     }
+  }, [selectedBragForReview, sortedBrags])
 
-    if (filter === "all" || filter === "pr") {
-      items.push(
-        ...contributions.pullRequests.map((pr) => ({
-          type: "pr",
-          title: pr.title,
-          date: pr.createdAt,
-          repository: pr.repository,
-          url: pr.url,
-          significance: pr.state === "closed" ? ("high" as const) : ("medium" as const),
-        }))
-      )
+  const toggleSelectBrag = (bragId: string) => {
+    const newSelected = new Set(selectedBrags)
+    if (newSelected.has(bragId)) {
+      newSelected.delete(bragId)
+    } else {
+      newSelected.add(bragId)
     }
+    setSelectedBrags(newSelected)
+  }
 
-    if (filter === "all" || filter === "issue") {
-      items.push(
-        ...contributions.issues.map((issue) => ({
-          type: "issue",
-          title: issue.title,
-          date: issue.createdAt,
-          repository: issue.repository,
-          url: issue.url,
-          significance: issue.state === "closed" ? ("high" as const) : ("medium" as const),
-        }))
-      )
+  const toggleSelectAll = () => {
+    if (selectedBrags.size === sortedBrags.length) {
+      setSelectedBrags(new Set())
+    } else {
+      setSelectedBrags(new Set(sortedBrags.map((b) => b.id)))
     }
+  }
 
-    if (filter === "all" || filter === "release") {
-      items.push(
-        ...contributions.releases.map((release) => ({
-          type: "release",
-          title: release.name,
-          date: release.createdAt,
-          repository: release.repository,
-          url: release.url,
-          significance: "high" as const,
-          description: release.body,
-        }))
-      )
-    }
+  const handleBulkUpdate = async () => {
+    if (selectedBrags.size === 0) return
 
-    // Apply search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      items = items.filter(
-        (item) =>
-          item.title.toLowerCase().includes(query) ||
-          item.repository.toLowerCase().includes(query) ||
-          item.description?.toLowerCase().includes(query)
-      )
-    }
+    setIsBulkUpdating(true)
+    try {
+      const updateData: {
+        relevance?: number
+        resumeSectionId?: string | null
+        techTags?: string[]
+      } = {}
 
-    // Sort
-    items.sort((a, b) => {
-      if (sortOrder === "newest") {
-        return new Date(b.date).getTime() - new Date(a.date).getTime()
+      if (bulkRelevance !== undefined) {
+        updateData.relevance = bulkRelevance
       }
-      if (sortOrder === "oldest") {
-        return new Date(a.date).getTime() - new Date(b.date).getTime()
+      if (bulkResumeSectionId !== undefined) {
+        updateData.resumeSectionId = bulkResumeSectionId
       }
-      // most-impact: releases > high > medium > low
-      const scoreMap = {
-        high: 3,
-        medium: 2,
-        low: 1,
+      if (bulkTechTags.length > 0) {
+        updateData.techTags = bulkTechTags
       }
-      const scoreA = a.type === "release" ? 4 : scoreMap[a.significance || "low"]
-      const scoreB = b.type === "release" ? 4 : scoreMap[b.significance || "low"]
-      return scoreB - scoreA
-    })
 
-    return items
+      const response = await fetch("/api/brags/bulk", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bragIds: Array.from(selectedBrags),
+          ...updateData,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to update brags")
+      }
+
+      // Reset bulk edit state
+      setSelectedBrags(new Set())
+      setShowBulkEdit(false)
+      setBulkRelevance(undefined)
+      setBulkResumeSectionId(null)
+      setBulkTechTags([])
+      refetch()
+    } catch (error) {
+      console.error("Bulk update error:", error)
+      alert("Failed to update brags. Please try again.")
+    } finally {
+      setIsBulkUpdating(false)
+    }
+  }
+
+  const handleBulkArchive = async () => {
+    if (selectedBrags.size === 0) return
+
+    if (!confirm(`Archive ${selectedBrags.size} brag(s)?`)) return
+
+    setIsBulkUpdating(true)
+    try {
+      const response = await fetch("/api/brags/bulk", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bragIds: Array.from(selectedBrags),
+          reviewStatus: "archived",
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to archive brags")
+      }
+
+      setSelectedBrags(new Set())
+      setShowBulkEdit(false)
+      refetch()
+    } catch (error) {
+      console.error("Bulk archive error:", error)
+      alert("Failed to archive brags. Please try again.")
+    } finally {
+      setIsBulkUpdating(false)
+    }
+  }
+
+  const handleAddBulkTechTag = (tag: string) => {
+    if (tag.trim() && !bulkTechTags.includes(tag.trim())) {
+      setBulkTechTags([...bulkTechTags, tag.trim()])
+      setBulkTechTagInput("")
+    }
+  }
+
+  const handleRemoveBulkTechTag = (tag: string) => {
+    setBulkTechTags(bulkTechTags.filter((t) => t !== tag))
   }
 
   const exportToMarkdown = () => {
-    const items = filterContributions()
-    let markdown = "# My Brag List\n\n"
-    markdown += `Generated on ${new Date().toLocaleDateString()}\n\n`
-
-    const groupedByType = items.reduce(
-      (acc, item) => {
-        if (!acc[item.type]) acc[item.type] = []
-        acc[item.type].push(item)
-        return acc
-      },
-      {} as Record<string, typeof items>
-    )
-
-    Object.entries(groupedByType).forEach(([type, typeItems]) => {
-      markdown += `## ${type.toUpperCase()}S\n\n`
-      typeItems.forEach((item) => {
-        markdown += `- **${item.title}** - ${item.repository}\n`
-        markdown += `  - Date: ${new Date(item.date).toLocaleDateString()}\n`
-        markdown += `  - [View on GitHub](${item.url})\n`
-        if (item.description) {
-          markdown += `  - ${item.description.slice(0, 200)}...\n`
-        }
-        markdown += "\n"
-      })
-    })
-
-    // Download
-    const blob = new Blob([markdown], { type: "text/markdown" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `brag-list-${new Date().toISOString().split("T")[0]}.md`
-    a.click()
-    URL.revokeObjectURL(url)
+    exportBragsToMarkdown(sortedBrags)
   }
 
   if (isLoading) {
@@ -185,249 +200,111 @@ export function BragListPage() {
         <Card>
           <CardContent className="py-8 text-center">
             <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
-            <p className="mt-2 text-muted-foreground">Loading your contributions...</p>
+            <p className="mt-2 text-muted-foreground">Loading your brags...</p>
           </CardContent>
         </Card>
       </div>
     )
   }
-
-  if (!contributions) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Brag List</h1>
-          <p className="text-muted-foreground">Your resume-worthy achievements from GitHub</p>
-        </div>
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5" />
-              <CardTitle>No Contributions Found</CardTitle>
-            </div>
-            <CardDescription>Scan your GitHub to generate your brag list</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={() => (window.location.href = "/dashboard/github")}>
-              Connect GitHub
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  const filteredItems = filterContributions()
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Brag List</h1>
-          <p className="text-muted-foreground">Your resume-worthy achievements from GitHub</p>
-        </div>
-        <Button onClick={exportToMarkdown}>
-          <FileDown className="mr-2 h-4 w-4" />
-          Export to Markdown
-        </Button>
-      </div>
+      <BragHeader onExport={exportToMarkdown} />
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium">Total</CardTitle>
-              <Sparkles className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{filteredItems.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium">Commits</CardTitle>
-              <GitCommit className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{contributions.commits.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium">Pull Requests</CardTitle>
-              <GitPullRequest className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{contributions.pullRequests.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium">Issues</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{contributions.issues.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium">Releases</CardTitle>
-              <Rocket className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{contributions.releases.length}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col gap-4 md:flex-row">
-            {/* Search */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Search contributions..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-
-            {/* Type Filter */}
-            <select
-              value={filter}
-              onChange={(e) => setFilter(e.target.value as ContributionType)}
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="all">All Types</option>
-              <option value="commit">Commits</option>
-              <option value="pr">Pull Requests</option>
-              <option value="issue">Issues</option>
-              <option value="release">Releases</option>
-            </select>
-
-            {/* Sort Order */}
-            <select
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-              <option value="most-impact">Most Impact</option>
-            </select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Contributions List */}
-      <div className="space-y-3">
-        {filteredItems.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center">
-              <AlertCircle className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
-              <p className="text-muted-foreground">No contributions found matching your filters.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          filteredItems.map((item, index) => (
-            <Card key={index} className="transition-shadow hover:shadow-md">
-              <CardContent className="pt-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-2">
-                      {item.type === "commit" && (
-                        <GitCommit className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      {item.type === "pr" && (
-                        <GitPullRequest className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      {item.type === "issue" && (
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      {item.type === "release" && (
-                        <Rocket className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      <Badge
-                        variant={
-                          item.type === "release"
-                            ? "default"
-                            : item.significance === "high"
-                              ? "default"
-                              : "secondary"
-                        }
-                      >
-                        {item.type.toUpperCase()}
-                      </Badge>
-                      {item.significance === "high" && item.type !== "release" && (
-                        <Badge variant="outline">High Impact</Badge>
-                      )}
-                    </div>
-                    <h3 className="text-lg font-semibold">{item.title}</h3>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span>{item.repository}</span>
-                      <span>•</span>
-                      <span>{new Date(item.date).toLocaleDateString()}</span>
-                    </div>
-                    {item.description && (
-                      <p className="line-clamp-2 text-sm text-muted-foreground">
-                        {item.description}
-                      </p>
-                    )}
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open(item.url, "_blank")}
-                  >
-                    <ExternalLink className="mr-2 h-4 w-4" />
-                    View
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </div>
-
-      {/* Languages Overview */}
-      {contributions.languages && Object.keys(contributions.languages).length > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Code2 className="h-5 w-5" />
-              <CardTitle>Languages Used</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(contributions.languages)
-                .sort(([, a], [, b]) => b - a)
-                .slice(0, 10)
-                .map(([lang, count]) => (
-                  <Badge key={lang} variant="secondary">
-                    {lang}: {count}
-                  </Badge>
-                ))}
-            </div>
-          </CardContent>
-        </Card>
+      {stats && (
+        <PendingBragsAlert
+          pendingCount={stats.pending}
+          onReviewClick={() => setReviewStatusFilter("pending")}
+        />
       )}
+
+      {stats && <BragStats stats={stats} selectedCount={selectedBrags.size} />}
+
+      {showBulkEdit && selectedBrags.size > 0 && (
+        <BulkEditPanel
+          selectedCount={selectedBrags.size}
+          relevance={bulkRelevance}
+          resumeSectionId={bulkResumeSectionId}
+          techTags={bulkTechTags}
+          techTagInput={bulkTechTagInput}
+          isUpdating={isBulkUpdating}
+          resumeSections={allSections}
+          onRelevanceChange={setBulkRelevance}
+          onResumeSectionChange={setBulkResumeSectionId}
+          onTechTagAdd={handleAddBulkTechTag}
+          onTechTagRemove={handleRemoveBulkTechTag}
+          onTechTagInputChange={setBulkTechTagInput}
+          onUpdate={handleBulkUpdate}
+          onArchive={handleBulkArchive}
+          onCancel={() => {
+            setSelectedBrags(new Set())
+            setShowBulkEdit(false)
+          }}
+          onClose={() => setShowBulkEdit(false)}
+        />
+      )}
+
+      <BragFilters
+        searchQuery={searchQuery}
+        reviewStatusFilter={reviewStatusFilter}
+        typeFilter={typeFilter}
+        sortOrder={sortOrder}
+        onSearchChange={setSearchQuery}
+        onReviewStatusChange={setReviewStatusFilter}
+        onTypeChange={setTypeFilter}
+        onSortChange={setSortOrder}
+      />
+
+      <BragSelectionControls
+        totalCount={sortedBrags.length}
+        selectedCount={selectedBrags.size}
+        onSelectAll={toggleSelectAll}
+        onEditSelected={() => setShowBulkEdit(true)}
+        onClearSelection={() => setSelectedBrags(new Set())}
+      />
+
+      <BragList
+        brags={sortedBrags}
+        selectedBrags={selectedBrags}
+        onSelectBrag={toggleSelectBrag}
+        onReviewBrag={(bragId) => setSelectedBragForReview(bragId)}
+      />
+
+      {selectedBragForReview &&
+        (() => {
+          const currentBrag = sortedBrags.find((b) => b.id === selectedBragForReview)
+
+          // Don't render modal if brag is not found (useEffect will close it)
+          if (!currentBrag) {
+            return null
+          }
+
+          const currentIndex = sortedBrags.findIndex((b) => b.id === selectedBragForReview)
+          const isPending = currentBrag.reviewStatus === "pending"
+
+          return (
+            <BragReviewModal
+              brag={currentBrag}
+              allBrags={sortedBrags}
+              currentIndex={currentIndex}
+              onClose={() => setSelectedBragForReview(null)}
+              onSave={() => {
+                refetch()
+              }}
+              onNavigate={(bragId) => {
+                // Verify brag exists before navigating
+                const targetBrag = sortedBrags.find((b) => b.id === bragId)
+                if (targetBrag) {
+                  setSelectedBragForReview(bragId)
+                } else {
+                  // If brag not found, close modal
+                  setSelectedBragForReview(null)
+                }
+              }}
+              autoNavigateToNextPending={isPending}
+            />
+          )
+        })()}
     </div>
   )
 }
