@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
-import { LLMClient } from "@/lib/llm/client"
+import { compareResumeWithContributions } from "@/lib/services/llm"
 import { rateLimit } from "@/lib/rate-limit"
-import { db } from "@/lib/db"
-import { users } from "@/lib/db/schema"
-import { eq } from "drizzle-orm"
-import { decryptToken } from "@/lib/github/encryption"
 
 const limiter = rateLimit({
   interval: 60 * 1000, // 1 minute
@@ -29,21 +25,6 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Fetch OpenAI API key from database
-    const [user] = await db
-      .select({ openaiApiKey: users.openaiApiKey })
-      .from(users)
-      .where(eq(users.id, session.user.id))
-
-    if (!user?.openaiApiKey) {
-      return NextResponse.json(
-        { error: "OpenAI API key not found. Please add it in settings." },
-        { status: 400 }
-      )
-    }
-
-    const apiKey = decryptToken(user.openaiApiKey)
-
     // Parse request body
     const body = await req.json()
     const { existingResume, contributions } = body
@@ -62,49 +43,41 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Create LLM client and compare
-    const llmClient = new LLMClient({ apiKey })
-    const comparison = await llmClient.compareResumeWithContributions({
+    // Compare resume with contributions using service
+    const result = await compareResumeWithContributions({
+      userId: session.user.id,
       existingResume,
       contributions,
     })
 
-    // Estimate tokens used
-    const estimatedTokens = llmClient.estimateTokens(
-      existingResume + JSON.stringify(contributions) + JSON.stringify(comparison)
-    )
-
     return NextResponse.json({
       success: true,
-      data: comparison,
+      data: {
+        missingAchievements: result.missingAchievements,
+        outdatedSections: result.outdatedSections,
+        suggestions: result.suggestions,
+      },
       meta: {
-        estimatedTokens,
+        estimatedTokens: result.estimatedTokens,
         remaining: rateLimitResult.remaining,
       },
     })
   } catch (error) {
     console.error("LLM compare error:", error)
 
-    // Handle OpenAI specific errors
-    if (error instanceof Error) {
-      if (error.message.includes("API key")) {
-        return NextResponse.json(
-          { error: "Invalid OpenAI API key" },
-          { status: 401 }
-        )
-      }
-      if (error.message.includes("quota")) {
-        return NextResponse.json(
-          { error: "OpenAI API quota exceeded" },
-          { status: 429 }
-        )
-      }
+    // Handle specific error messages from service
+    const errorMessage = error instanceof Error ? error.message : "Failed to compare resume with contributions"
+    let statusCode = 500
+
+    if (errorMessage.includes("API key not found") || errorMessage.includes("not configured")) {
+      statusCode = 400
+    } else if (errorMessage.includes("Invalid") || errorMessage.includes("decrypt")) {
+      statusCode = 401
+    } else if (errorMessage.includes("quota")) {
+      statusCode = 429
     }
 
-    return NextResponse.json(
-      { error: "Failed to compare resume with contributions" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: errorMessage }, { status: statusCode })
   }
 }
 

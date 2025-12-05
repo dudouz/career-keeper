@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
-import { LLMClient } from "@/lib/llm/client"
+import { generateSummary } from "@/lib/services/llm"
 import { rateLimit } from "@/lib/rate-limit"
-import { db } from "@/lib/db"
-import { users } from "@/lib/db/schema"
-import { eq } from "drizzle-orm"
-import { decryptToken } from "@/lib/github/encryption"
 
 const limiter = rateLimit({
   interval: 60 * 1000, // 1 minute
@@ -29,21 +25,6 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Fetch OpenAI API key from database
-    const [user] = await db
-      .select({ openaiApiKey: users.openaiApiKey })
-      .from(users)
-      .where(eq(users.id, session.user.id))
-
-    if (!user?.openaiApiKey) {
-      return NextResponse.json(
-        { error: "OpenAI API key not found. Please add it in settings." },
-        { status: 400 }
-      )
-    }
-
-    const apiKey = decryptToken(user.openaiApiKey)
-
     // Parse request body
     const body = await req.json()
     const { contributions, currentSummary, tone } = body
@@ -55,59 +36,43 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Validate tone if provided
-    const validTones = ["technical", "leadership", "hybrid"]
-    if (tone && !validTones.includes(tone)) {
-      return NextResponse.json(
-        { error: `Invalid tone. Must be one of: ${validTones.join(", ")}` },
-        { status: 400 }
-      )
-    }
-
-    // Create LLM client and generate summary
-    const llmClient = new LLMClient({ apiKey })
-    const summary = await llmClient.generateSummary({
+    // Generate summary using service
+    const result = await generateSummary({
+      userId: session.user.id,
       contributions,
       currentSummary,
       tone: tone || "hybrid",
     })
 
-    // Estimate tokens used
-    const estimatedTokens = llmClient.estimateTokens(
-      JSON.stringify(contributions) + JSON.stringify(summary)
-    )
-
     return NextResponse.json({
       success: true,
-      data: summary,
+      data: {
+        summary: result.summary,
+        alternatives: result.alternatives,
+      },
       meta: {
-        estimatedTokens,
+        estimatedTokens: result.estimatedTokens,
         remaining: rateLimitResult.remaining,
       },
     })
   } catch (error) {
     console.error("LLM summarize error:", error)
 
-    // Handle OpenAI specific errors
-    if (error instanceof Error) {
-      if (error.message.includes("API key")) {
-        return NextResponse.json(
-          { error: "Invalid OpenAI API key" },
-          { status: 401 }
-        )
-      }
-      if (error.message.includes("quota")) {
-        return NextResponse.json(
-          { error: "OpenAI API quota exceeded" },
-          { status: 429 }
-        )
-      }
+    // Handle specific error messages from service
+    const errorMessage = error instanceof Error ? error.message : "Failed to generate summary"
+    let statusCode = 500
+
+    if (errorMessage.includes("Invalid tone")) {
+      statusCode = 400
+    } else if (errorMessage.includes("API key not found") || errorMessage.includes("not configured")) {
+      statusCode = 400
+    } else if (errorMessage.includes("Invalid") || errorMessage.includes("decrypt")) {
+      statusCode = 401
+    } else if (errorMessage.includes("quota")) {
+      statusCode = 429
     }
 
-    return NextResponse.json(
-      { error: "Failed to generate summary" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: errorMessage }, { status: statusCode })
   }
 }
 

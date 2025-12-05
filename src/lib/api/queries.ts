@@ -448,14 +448,14 @@ export function useDeleteResumeMutation() {
 }
 
 /**
- * Reprocess a resume with the latest parser
+ * Re-extract resume data using LLM and update database
  */
 export function useReprocessResumeMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async (resumeId: string) => {
-      const response = await fetch("/api/resume/reprocess", {
+      const response = await fetch("/api/resume/update-with-llm", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -465,7 +465,7 @@ export function useReprocessResumeMutation() {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || "Failed to reprocess resume")
+        throw new Error(error.error || "Failed to re-extract resume data")
       }
 
       return response.json()
