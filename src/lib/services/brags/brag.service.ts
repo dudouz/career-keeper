@@ -1,15 +1,42 @@
 import { db } from "@/lib/db"
 import { brags, users } from "@/lib/db/schema"
 import type { BragReviewStatus } from "@/lib/db/types"
-import { and, count, eq, sql } from "drizzle-orm"
+import { and, count, eq, inArray, sql } from "drizzle-orm"
 import type {
   BragStatsResult,
+  BulkUpdateBragsParams,
   CreateBragParams,
   GetBragsParams,
   GetBragsResult,
   SyncBragsFromGitHubParams,
   UpdateBragReviewParams,
 } from "./brag.types"
+
+/**
+ * Parse query parameters from request URL for getBrags
+ */
+export function parseGetBragsParams(userId: string, searchParams: URLSearchParams): GetBragsParams {
+  const reviewStatus = searchParams.get("reviewStatus") as GetBragsParams["reviewStatus"] | null
+  const type = searchParams.get("type") as GetBragsParams["type"] | null
+  const limit = searchParams.get("limit") ? parseInt(searchParams.get("limit")!, 10) : 50
+  const offset = searchParams.get("offset") ? parseInt(searchParams.get("offset")!, 10) : 0
+
+  const params: GetBragsParams = {
+    userId,
+    limit,
+    offset,
+  }
+
+  if (reviewStatus) {
+    params.reviewStatus = reviewStatus
+  }
+
+  if (type) {
+    params.type = type
+  }
+
+  return params
+}
 
 /**
  * Get brags for a user with optional filters
@@ -206,6 +233,72 @@ export async function getBragStats(userId: string): Promise<BragStatsResult> {
     reviewed: Number(stats.reviewed) || 0,
     archived: Number(stats.archived) || 0,
     total: stats.total,
+  }
+}
+
+/**
+ * Bulk update multiple brags
+ */
+export async function bulkUpdateBrags(params: BulkUpdateBragsParams) {
+  const { userId, bragIds, relevance, resumeSectionId, techTags, reviewStatus } = params
+
+  if (!Array.isArray(bragIds) || bragIds.length === 0) {
+    throw new Error("bragIds must be a non-empty array")
+  }
+
+  // Verify all brags belong to user
+  const userBrags = await db
+    .select({ id: brags.id })
+    .from(brags)
+    .where(and(eq(brags.userId, userId), inArray(brags.id, bragIds)))
+
+  if (userBrags.length !== bragIds.length) {
+    throw new Error("Some brags not found or access denied")
+  }
+
+  // Build update object
+  const updateData: {
+    relevance?: number
+    resumeSectionId?: string | null
+    techTags?: string[]
+    reviewStatus?: BragReviewStatus
+    reviewedAt?: Date
+    updatedAt?: Date
+  } = {
+    updatedAt: new Date(),
+  }
+
+  if (relevance !== undefined) {
+    updateData.relevance = relevance
+  }
+
+  if (resumeSectionId !== undefined) {
+    updateData.resumeSectionId = resumeSectionId || null
+  }
+
+  if (techTags !== undefined) {
+    updateData.techTags = techTags
+  }
+
+  if (reviewStatus !== undefined) {
+    updateData.reviewStatus = reviewStatus
+    if (reviewStatus === "reviewed") {
+      updateData.reviewedAt = new Date()
+    }
+  } else if (relevance !== undefined || resumeSectionId !== undefined || techTags !== undefined) {
+    // If any review field is set, mark as reviewed
+    updateData.reviewStatus = "reviewed"
+    updateData.reviewedAt = new Date()
+  }
+
+  // Update all brags
+  await db
+    .update(brags)
+    .set(updateData)
+    .where(and(eq(brags.userId, userId), inArray(brags.id, bragIds)))
+
+  return {
+    updated: bragIds.length,
   }
 }
 

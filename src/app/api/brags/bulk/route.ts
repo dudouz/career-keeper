@@ -1,8 +1,5 @@
 import { auth } from "@/auth"
-import { db } from "@/lib/db"
-import { brags } from "@/lib/db/schema"
-import type { BragReviewStatus } from "@/lib/db/types"
-import { and, eq, inArray } from "drizzle-orm"
+import { bulkUpdateBrags } from "@/lib/services/brags"
 import { NextResponse } from "next/server"
 
 export async function PATCH(request: Request) {
@@ -15,65 +12,25 @@ export async function PATCH(request: Request) {
     const body = await request.json()
     const { bragIds, relevance, resumeSectionId, techTags, reviewStatus } = body
 
-    if (!Array.isArray(bragIds) || bragIds.length === 0) {
-      return NextResponse.json({ error: "bragIds must be a non-empty array" }, { status: 400 })
-    }
+    const result = await bulkUpdateBrags({
+      userId: session.user.id,
+      bragIds,
+      relevance,
+      resumeSectionId,
+      techTags,
+      reviewStatus,
+    })
 
-    // Verify all brags belong to user
-    const userBrags = await db
-      .select({ id: brags.id })
-      .from(brags)
-      .where(and(eq(brags.userId, session.user.id), inArray(brags.id, bragIds)))
-
-    if (userBrags.length !== bragIds.length) {
-      return NextResponse.json({ error: "Some brags not found or access denied" }, { status: 403 })
-    }
-
-    // Build update object
-    const updateData: {
-      relevance?: number
-      resumeSectionId?: string | null
-      techTags?: string[]
-      reviewStatus?: BragReviewStatus
-      reviewedAt?: Date
-      updatedAt?: Date
-    } = {
-      updatedAt: new Date(),
-    }
-
-    if (relevance !== undefined) {
-      updateData.relevance = relevance
-    }
-
-    if (resumeSectionId !== undefined) {
-      updateData.resumeSectionId = resumeSectionId || null
-    }
-
-    if (techTags !== undefined) {
-      updateData.techTags = techTags
-    }
-
-    if (reviewStatus !== undefined) {
-      updateData.reviewStatus = reviewStatus
-      if (reviewStatus === "reviewed") {
-        updateData.reviewedAt = new Date()
-      }
-    } else if (relevance !== undefined || resumeSectionId !== undefined || techTags !== undefined) {
-      // If any review field is set, mark as reviewed
-      updateData.reviewStatus = "reviewed"
-      updateData.reviewedAt = new Date()
-    }
-
-    // Update all brags
-    await db
-      .update(brags)
-      .set(updateData)
-      .where(and(eq(brags.userId, session.user.id), inArray(brags.id, bragIds)))
-
-    return NextResponse.json({ success: true, updated: bragIds.length })
+    return NextResponse.json({ success: true, updated: result.updated })
   } catch (error) {
     console.error("Bulk update brags error:", error)
     const errorMessage = error instanceof Error ? error.message : "Failed to update brags"
-    return NextResponse.json({ error: errorMessage }, { status: 500 })
+    const statusCode =
+      errorMessage.includes("not found") || errorMessage.includes("access denied")
+        ? 403
+        : errorMessage.includes("must be a non-empty array")
+          ? 400
+          : 500
+    return NextResponse.json({ error: errorMessage }, { status: statusCode })
   }
 }

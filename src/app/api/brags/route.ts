@@ -1,10 +1,9 @@
 import { auth } from "@/auth"
-import type { BragReviewStatus, BragType } from "@/lib/db/types"
 import {
   createBrag,
   getBrags,
+  parseGetBragsParams,
   type CreateBragParams,
-  type GetBragsParams,
 } from "@/lib/services/brags"
 import { NextResponse } from "next/server"
 
@@ -16,25 +15,7 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url)
-    const reviewStatus = searchParams.get("reviewStatus") as BragReviewStatus | null
-    const type = searchParams.get("type") as BragType | null
-    const limit = searchParams.get("limit") ? parseInt(searchParams.get("limit")!, 10) : 50
-    const offset = searchParams.get("offset") ? parseInt(searchParams.get("offset")!, 10) : 0
-
-    const params: GetBragsParams = {
-      userId: session.user.id,
-      limit,
-      offset,
-    }
-
-    if (reviewStatus) {
-      params.reviewStatus = reviewStatus
-    }
-
-    if (type) {
-      params.type = type
-    }
-
+    const params = parseGetBragsParams(session.user.id, searchParams)
     const result = await getBrags(params)
 
     return NextResponse.json(result)

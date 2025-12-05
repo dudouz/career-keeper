@@ -44,3 +44,12 @@ export interface BragStatsResult {
 export interface SyncBragsFromGitHubParams {
   userId: string
 }
+
+export interface BulkUpdateBragsParams {
+  userId: string
+  bragIds: string[]
+  relevance?: number
+  resumeSectionId?: string | null
+  techTags?: string[]
+  reviewStatus?: BragReviewStatus
+}
