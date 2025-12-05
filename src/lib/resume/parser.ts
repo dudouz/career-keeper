@@ -1,4 +1,5 @@
 import mammoth from "mammoth"
+import OpenAI from "openai"
 import { extractText } from "unpdf"
 
 // New structured types for parsed resume
@@ -46,6 +47,248 @@ export async function parseDOCX(buffer: Buffer): Promise<string> {
 
 export function parseTXT(buffer: Buffer): string {
   return buffer.toString("utf-8")
+}
+
+// LLM Response Types
+interface LLMResumeResponse {
+  candidate: {
+    full_name: string | null
+    email: string | null
+    phone: string | null
+    linkedin: string | null
+    github: string | null
+    portfolio_url: string | null
+    location: string | null
+    summary: string | null
+    skills: string[] | null
+  }
+  experiences: Array<{
+    company: string | null
+    role: string | null
+    start_date: string | null
+    end_date: string | null
+    location: string | null
+    employment_type:
+      | "full-time"
+      | "contract"
+      | "freelance"
+      | "internship"
+      | "part-time"
+      | "volunteer"
+      | null
+    responsibilities: string[] | null
+    description: string | null
+    technologies: string[] | null
+  }>
+  education: Array<{
+    institution: string | null
+    degree: string | null
+    field_of_study: string | null
+    start_date: string | null
+    end_date: string | null
+    location: string | null
+  }>
+  certifications: Array<{
+    name: string | null
+    issuer: string | null
+    date: string | null
+  }>
+}
+
+// Normalize date from various formats to YYYY-MM
+function normalizeLLMDate(dateStr: string | null): string | undefined {
+  if (!dateStr) return undefined
+
+  const cleaned = dateStr.trim().toLowerCase()
+
+  // Handle "present", "current", etc.
+  if (cleaned === "present" || cleaned === "current" || cleaned === "now") {
+    return undefined
+  }
+
+  // Try to extract year and month
+  // Format: "2023-01" or "2023-1"
+  const dashFormat = cleaned.match(/(\d{4})-(\d{1,2})/)
+  if (dashFormat) {
+    const year = dashFormat[1]
+    const month = dashFormat[2].padStart(2, "0")
+    return `${year}-${month}`
+  }
+
+  // Format: "January 2023", "Jan 2023", "01/2023"
+  const monthYearMatch = cleaned.match(/(\w+)[\s/](\d{4})/)
+  if (monthYearMatch) {
+    const monthStr = monthYearMatch[1]
+    const year = monthYearMatch[2]
+    const month = parseMonth(monthStr)
+    return `${year}-${month.toString().padStart(2, "0")}`
+  }
+
+  // Format: "2023" (year only)
+  const yearOnly = cleaned.match(/^(\d{4})$/)
+  if (yearOnly) {
+    return `${yearOnly[1]}-01` // Default to January
+  }
+
+  // If we can't parse it, return the original or undefined
+  return undefined
+}
+
+// Mapper function from LLM output to ParsedResume
+function mapLLMResponseToParsedResume(
+  llmResponse: LLMResumeResponse,
+  rawContent: string
+): ParsedResume {
+  const { candidate, experiences } = llmResponse
+
+  // Map header
+  const header: ParsedResumeHeader = {
+    name: candidate.full_name || "",
+    email: candidate.email || "",
+    phone: candidate.phone || undefined,
+    git: candidate.github || undefined,
+    linkedin: candidate.linkedin || undefined,
+    website: candidate.portfolio_url || undefined,
+  }
+
+  // Map summary
+  const summary = candidate.summary || ""
+
+  // Map experiences to sections
+  const sections: ParsedResumeSection[] = (experiences || []).map((exp, index) => {
+    // Combine description, responsibilities, and technologies
+    const descriptionParts: string[] = []
+
+    // Add main description if exists
+    if (exp.description) {
+      descriptionParts.push(exp.description)
+    }
+
+    // Add responsibilities as bullet points
+    if (exp.responsibilities && exp.responsibilities.length > 0) {
+      descriptionParts.push(...exp.responsibilities)
+    }
+
+    // Add technologies section if exists
+    if (exp.technologies && exp.technologies.length > 0) {
+      descriptionParts.push(`Technologies: ${exp.technologies.join(", ")}`)
+    }
+
+    return {
+      company: exp.company || "",
+      position: exp.role || "",
+      start: normalizeLLMDate(exp.start_date) || "",
+      end: normalizeLLMDate(exp.end_date),
+      description: descriptionParts.join("\n"),
+      displayOrder: index,
+    }
+  })
+
+  return {
+    header,
+    summary,
+    sections,
+    rawContent,
+  }
+}
+
+// LLM-based resume parsing
+export async function parseResumeWithLLM(
+  rawContent: string,
+  apiKey: string
+): Promise<ParsedResume> {
+  const openai = new OpenAI({ apiKey })
+
+  // TODO: User will provide this prompt
+  const prompt = `
+  Extract ALL candidate information from the résumé below.
+
+Return ONLY JSON following this schema:
+
+{
+  "candidate": {
+    "full_name": string | null,
+    "email": string | null,
+    "phone": string | null,
+    "linkedin": string | null,
+    "github": string | null,
+    "portfolio_url": string | null,
+    "location": string | null,
+    "summary": string | null,
+    "skills": string[] | null
+  },
+
+  "experiences": [
+    {
+      "company": string | null,
+      "role": string | null,
+      "start_date": string | null,
+      "end_date": string | null,
+      "location": string | null,
+      "employment_type":
+          "full-time" | "contract" | "freelance" | "internship" |
+          "part-time" | "volunteer" | null,
+      "responsibilities": string[] | null,
+      "description": string | null,
+      "technologies": string[] | null
+    }
+  ],
+
+  "education": [
+    {
+      "institution": string | null,
+      "degree": string | null,
+      "field_of_study": string | null,
+      "start_date": string | null,
+      "end_date": string | null,
+      "location": string | null
+    }
+  ],
+
+  "certifications": [
+    {
+      "name": string | null,
+      "issuer": string | null,
+      "date": string | null
+    }
+  ]
+}
+
+Rules:
+- Do NOT summarize anything.
+- Preserve bullet lists when present.
+- Preserve date formats exactly as in the original text.
+- Extract skills wherever they appear (sections, descriptions, technologies).
+- Extract only what exists; missing values must be null.
+- Technologies used inside job descriptions must go into "technologies".
+
+Resume text:
+`
+
+  const fullPrompt = prompt.replace("<<<TEXT_HERE>>>", rawContent)
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini", // Using GPT-4o-mini as a small, fast model
+    messages: [
+      {
+        role: "system",
+        content:
+          "You are an expert resume parser. Extract structured information from resumes and return it in valid JSON format.",
+      },
+      {
+        role: "user",
+        content: fullPrompt,
+      },
+    ],
+    response_format: { type: "json_object" },
+    temperature: 0.3, // Lower temperature for more consistent parsing
+  })
+
+  const content = completion.choices[0].message.content || "{}"
+  const llmResponse: LLMResumeResponse = JSON.parse(content)
+
+  // Map LLM response to ParsedResume interface
+  return mapLLMResponseToParsedResume(llmResponse, rawContent)
 }
 
 // Header extraction
@@ -662,7 +905,11 @@ export function extractSections(text: string): ParsedResumeSection[] {
 }
 
 // Main parsing function
-export async function parseResumeFile(buffer: Buffer, fileType: string): Promise<ParsedResume> {
+export async function parseResumeFile(
+  buffer: Buffer,
+  fileType: string,
+  options?: { openaiApiKey?: string; useLLM?: boolean }
+): Promise<ParsedResume> {
   // 1. Extract raw text based on file type
   let rawContent: string
 
@@ -678,13 +925,14 @@ export async function parseResumeFile(buffer: Buffer, fileType: string): Promise
     throw new Error(`Unsupported file type: ${fileType}`)
   }
 
-  // 2. Extract header
+  // 2. Use LLM-based parsing if API key is provided and useLLM is true
+  if (options?.useLLM && options?.openaiApiKey) {
+    return parseResumeWithLLM(rawContent, options.openaiApiKey)
+  }
+
+  // 3. Fallback to regex-based parsing
   const header = extractHeader(rawContent)
-
-  // 3. Extract summary
   const summary = extractSummary(rawContent)
-
-  // 4. Extract sections
   const sections = extractSections(rawContent)
 
   return {
