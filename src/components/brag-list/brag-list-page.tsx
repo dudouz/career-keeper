@@ -36,18 +36,23 @@ export function BragListPage() {
   const [bulkTechTagInput, setBulkTechTagInput] = useState("")
   const [isBulkUpdating, setIsBulkUpdating] = useState(false)
 
+  // Map reviewStatus filter to query parameter - exclude archived by default when "all" is selected
+  const reviewStatusMap: Record<
+    ReviewStatusFilter,
+    "pending" | "reviewed" | "archived" | undefined
+  > = {
+    all: undefined, // Exclude archived by default
+    pending: "pending",
+    reviewed: "reviewed",
+    archived: "archived",
+  }
+
   const {
     data: bragsData,
     isLoading,
     refetch,
   } = useBragsQuery({
-    // Exclude archived by default, only show if explicitly selected
-    reviewStatus:
-      reviewStatusFilter === "all"
-        ? undefined // When "all", exclude archived by default
-        : reviewStatusFilter === "archived"
-          ? "archived"
-          : reviewStatusFilter,
+    reviewStatus: reviewStatusMap[reviewStatusFilter],
     type: typeFilter === "all" ? undefined : typeFilter,
     enabled: true,
   })
@@ -133,7 +138,7 @@ export function BragListPage() {
       refetch()
     } catch (error) {
       console.error("Bulk update error:", error)
-      alert("Erro ao atualizar brags. Tente novamente.")
+      alert("Failed to update brags. Please try again.")
     } finally {
       setIsBulkUpdating(false)
     }
@@ -142,7 +147,7 @@ export function BragListPage() {
   const handleBulkArchive = async () => {
     if (selectedBrags.size === 0) return
 
-    if (!confirm(`Arquivar ${selectedBrags.size} brag(s)?`)) return
+    if (!confirm(`Archive ${selectedBrags.size} brag(s)?`)) return
 
     setIsBulkUpdating(true)
     try {
@@ -164,7 +169,7 @@ export function BragListPage() {
       refetch()
     } catch (error) {
       console.error("Bulk archive error:", error)
-      alert("Erro ao arquivar brags. Tente novamente.")
+      alert("Failed to archive brags. Please try again.")
     } finally {
       setIsBulkUpdating(false)
     }

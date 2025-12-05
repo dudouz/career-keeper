@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Edit, ExternalLink } from "lucide-react"
 import { BragTypeIcon } from "./brag-type-icon"
 import type { BragListItem } from "./types"
@@ -24,11 +25,10 @@ export function BragCard({ brag, isSelected, onSelect, onReview }: BragCardProps
       <CardContent className="pt-6">
         <div className="flex items-start gap-4">
           {/* Checkbox */}
-          <input
-            type="checkbox"
+          <Checkbox
             checked={isSelected}
-            onChange={onSelect}
-            className="mt-1 h-4 w-4 rounded border-gray-300"
+            onCheckedChange={() => onSelect()}
+            className="mt-1"
           />
 
           <div className="flex-1 space-y-2">

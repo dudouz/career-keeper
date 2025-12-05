@@ -1,5 +1,12 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Search } from "lucide-react"
 import type { BragType } from "@/lib/db/types"
 import type { ReviewStatusFilter, SortOrder } from "./types"
@@ -42,40 +49,43 @@ export function BragFilters({
           </div>
 
           {/* Review Status Filter */}
-          <select
-            value={reviewStatusFilter}
-            onChange={(e) => onReviewStatusChange(e.target.value as ReviewStatusFilter)}
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-          >
-            <option value="all">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="reviewed">Reviewed</option>
-            <option value="archived">Archived</option>
-          </select>
+          <Select value={reviewStatusFilter} onValueChange={onReviewStatusChange}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="reviewed">Reviewed</SelectItem>
+              <SelectItem value="archived">Archived</SelectItem>
+            </SelectContent>
+          </Select>
 
           {/* Type Filter */}
-          <select
-            value={typeFilter}
-            onChange={(e) => onTypeChange(e.target.value as BragType | "all")}
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-          >
-            <option value="all">All Types</option>
-            <option value="commit">Commits</option>
-            <option value="pr">Pull Requests</option>
-            <option value="issue">Issues</option>
-            <option value="release">Releases</option>
-          </select>
+          <Select value={typeFilter} onValueChange={onTypeChange}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All Types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="commit">Commits</SelectItem>
+              <SelectItem value="pr">Pull Requests</SelectItem>
+              <SelectItem value="issue">Issues</SelectItem>
+              <SelectItem value="release">Releases</SelectItem>
+            </SelectContent>
+          </Select>
 
           {/* Sort Order */}
-          <select
-            value={sortOrder}
-            onChange={(e) => onSortChange(e.target.value as SortOrder)}
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-          >
-            <option value="newest">Newest First</option>
-            <option value="oldest">Oldest First</option>
-            <option value="most-impact">Most Impact</option>
-          </select>
+          <Select value={sortOrder} onValueChange={onSortChange}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest First</SelectItem>
+              <SelectItem value="oldest">Oldest First</SelectItem>
+              <SelectItem value="most-impact">Most Impact</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </CardContent>
     </Card>

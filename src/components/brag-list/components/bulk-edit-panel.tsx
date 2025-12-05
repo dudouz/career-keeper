@@ -2,6 +2,13 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { X } from "lucide-react"
 import type { ResumeSectionOption } from "./types"
 
@@ -90,18 +97,22 @@ export function BulkEditPanel({
           <label className="mb-2 block text-sm font-medium">
             Associate with Resume Experience
           </label>
-          <select
+          <Select
             value={resumeSectionId || ""}
-            onChange={(e) => onResumeSectionChange(e.target.value || null)}
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            onValueChange={(value) => onResumeSectionChange(value || null)}
           >
-            <option value="">None (don't associate)</option>
-            {resumeSections.map((section) => (
-              <option key={section.id} value={section.id}>
-                {section.label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger>
+              <SelectValue placeholder="None (don't associate)" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">None (don't associate)</SelectItem>
+              {resumeSections.map((section) => (
+                <SelectItem key={section.id} value={section.id}>
+                  {section.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Bulk Tech Tags */}
