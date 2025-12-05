@@ -98,14 +98,14 @@ export function BulkEditPanel({
             Associate with Resume Experience
           </label>
           <Select
-            value={resumeSectionId || ""}
-            onValueChange={(value) => onResumeSectionChange(value || null)}
+            value={resumeSectionId || "none"}
+            onValueChange={(value) => onResumeSectionChange(value === "none" ? null : value)}
           >
             <SelectTrigger>
               <SelectValue placeholder="None (don't associate)" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">None (don't associate)</SelectItem>
+              <SelectItem value="none">None (don't associate)</SelectItem>
               {resumeSections.map((section) => (
                 <SelectItem key={section.id} value={section.id}>
                   {section.label}

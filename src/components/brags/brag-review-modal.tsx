@@ -3,6 +3,12 @@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -53,9 +59,23 @@ export function BragReviewModal({
   const { data: resumesData } = useResumesQuery()
   const updateMutation = useUpdateBragReviewMutation()
   const unarchiveMutation = useUnarchiveBragMutation()
+  const [open, setOpen] = useState(true)
 
   // Normalize date to Date object
   const bragDate = typeof brag.date === "string" ? new Date(brag.date) : brag.date
+
+  // Reset open state when brag changes (navigation)
+  useEffect(() => {
+    setOpen(true)
+  }, [brag.id])
+
+  // Handle dialog close
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+      setOpen(false)
+      onClose()
+    }
+  }
 
   const [relevance, setRelevance] = useState<number | undefined>(brag.relevance || undefined)
   const [resumeSectionId, setResumeSectionId] = useState<string | null>(
@@ -175,8 +195,9 @@ export function BragReviewModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <Card className="max-h-[90vh] w-full max-w-2xl overflow-y-auto">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto p-0">
+        <Card className="border-0 shadow-none">
         <CardHeader>
           <div className="flex items-start justify-between">
             <div className="flex-1">
@@ -214,9 +235,6 @@ export function BragReviewModal({
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
-              <Button variant="ghost" size="sm" onClick={onClose} title="Fechar (Esc)">
-                <X className="h-4 w-4" />
-              </Button>
             </div>
           </div>
         </CardHeader>
@@ -253,14 +271,14 @@ export function BragReviewModal({
               Associate with Resume Experience
             </label>
             <Select
-              value={resumeSectionId || ""}
-              onValueChange={(value) => setResumeSectionId(value || null)}
+              value={resumeSectionId || "none"}
+              onValueChange={(value) => setResumeSectionId(value === "none" ? null : value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="None (don't associate)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None (don't associate)</SelectItem>
+                <SelectItem value="none">None (don't associate)</SelectItem>
                 {allSections.map((section: { id: string; label: string; resumeId: string }) => (
                   <SelectItem key={section.id} value={section.id}>
                     {section.label}
@@ -386,7 +404,8 @@ export function BragReviewModal({
             </Button>
           </div>
         </CardContent>
-      </Card>
-    </div>
+        </Card>
+      </DialogContent>
+    </Dialog>
   )
 }

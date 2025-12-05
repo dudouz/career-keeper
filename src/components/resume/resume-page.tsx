@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,6 +54,7 @@ export function ResumePage() {
   const { mutate: reprocessResume, isPending: isReprocessing } = useReprocessResumeMutation()
   const { mutate: deleteResume, isPending: isDeleting } = useDeleteResumeMutation()
   const [selectedResume, setSelectedResume] = useState<ResumeWithSections | null>(null)
+  const [resumeToDelete, setResumeToDelete] = useState<ResumeWithSections | null>(null)
 
   const resumes = (resumesData?.resumes || []) as ResumeWithSections[]
 
@@ -71,10 +73,35 @@ export function ResumePage() {
   // Auto-select active resume or first resume
   const displayResume = selectedResume || resumes.find((r) => r.isActive) || resumes[0]
 
+  const handleDeleteConfirm = () => {
+    if (!resumeToDelete) return
+    deleteResume(resumeToDelete.id, {
+      onSuccess: () => {
+        if (selectedResume?.id === resumeToDelete.id) {
+          setSelectedResume(null)
+        }
+        setResumeToDelete(null)
+      },
+    })
+  }
+
   if (loading) {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-3xl font-bold">Resume Management</h1>
+  return (
+    <div className="space-y-6">
+      <ConfirmationDialog
+        open={!!resumeToDelete}
+        onOpenChange={(open) => {
+          if (!open) setResumeToDelete(null)
+        }}
+        title="Delete Resume"
+        description="Are you sure you want to delete this resume? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="destructive"
+        onConfirm={handleDeleteConfirm}
+      />
+
+      <h1 className="text-3xl font-bold">Resume Management</h1>
         <Card>
           <CardContent className="py-8 text-center">
             <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
@@ -224,15 +251,7 @@ export function ResumePage() {
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => {
-                          if (confirm("Are you sure you want to delete this resume?")) {
-                            deleteResume(resume.id, {
-                              onSuccess: () => {
-                                if (selectedResume?.id === resume.id) {
-                                  setSelectedResume(null)
-                                }
-                              },
-                            })
-                          }
+                          setResumeToDelete(resume)
                         }}
                         disabled={isDeleting}
                         className="text-destructive focus:text-destructive"
