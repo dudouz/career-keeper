@@ -39,6 +39,11 @@ export const queryKeys = {
     summarize: () => [...queryKeys.llm.all, "summarize"] as const,
     compare: () => [...queryKeys.llm.all, "compare"] as const,
   },
+  // Agents
+  agents: {
+    all: ["agents"] as const,
+    analyzeContributions: () => [...queryKeys.agents.all, "analyzeContributions"] as const,
+  },
   // OpenAI
   openai: {
     all: ["openai"] as const,
@@ -347,6 +352,8 @@ export function useCompareResumeWithContributionsMutation() {
  * Save OpenAI API key
  */
 export function useSaveOpenAIKeyMutation() {
+  const queryClient = useQueryClient()
+  
   return useMutation({
     mutationFn: async (apiKey: string) => {
       const response = await fetch("/api/openai/key", {
@@ -361,6 +368,10 @@ export function useSaveOpenAIKeyMutation() {
       }
 
       return response.json()
+    },
+    onSuccess: () => {
+      // Invalidate the OpenAI key status query to refresh the UI
+      queryClient.invalidateQueries({ queryKey: queryKeys.openai.keyStatus() })
     },
   })
 }
@@ -704,6 +715,123 @@ export function useBulkUpdateAchievementsMutation() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.achievements.all })
+    },
+  })
+}
+
+// =============================================================================
+// AGENTS MUTATIONS
+// =============================================================================
+
+/**
+ * Analyze GitHub contributions using Chain of Density AI pipeline
+ */
+export function useAnalyzeContributionsWithAgentMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (options?: {
+      contributions?: GitHubContributionData
+      maxCommits?: number
+      maxPRs?: number
+      includeRAGContext?: boolean
+      startDate?: string
+      endDate?: string
+      lastNDays?: number
+      context?: {
+        seniority?: "junior" | "mid" | "senior" | "staff" | "principal" | "lead"
+        role?: "backend" | "frontend" | "fullstack" | "devops" | "mobile" | "data" | "ml" | "security"
+        objective?: "job_application" | "promotion" | "year_review" | "portfolio" | "general" | "linkedin" | "resume_update" | "salary_negotiation"
+        targetJobTitle?: string
+        targetCompany?: string
+        yearsOfExperience?: number
+        customInstructions?: string
+      }
+    }) => {
+      const response = await fetch("/api/agents/analyze-contributions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...(options?.contributions ? { contributions: options.contributions } : {}),
+          options: {
+            maxCommits: options?.maxCommits,
+            maxPRs: options?.maxPRs,
+            includeRAGContext: options?.includeRAGContext,
+            startDate: options?.startDate,
+            endDate: options?.endDate,
+            lastNDays: options?.lastNDays,
+            context: options?.context,
+          },
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to analyze contributions")
+      }
+
+      return response.json() as Promise<{
+        success: boolean
+        data: {
+          consolidatedReport: {
+            overallSummary: string
+            individualReports: Array<{
+              markdownReport: string
+              contributionMetadata: {
+                type: "pr" | "commit"
+                identifier: string
+                title?: string
+                author?: string
+                date?: string
+              }
+            }>
+            aggregatedInsights: {
+              totalContributions: number
+              topTechnologies: Array<{ name: string; count: number }>
+              topPatterns: Array<{ name: string; count: number }>
+              keyAchievements: string[]
+            }
+            richAnalysisResult: {
+              prAnalyses: Array<{
+                prNumber: number
+                title: string
+                summary: string
+                technologies: string[]
+                patterns: string[]
+                complexity: "low" | "medium" | "high"
+                impact: string
+                filesChanged?: number
+                additions?: number
+                deletions?: number
+              }>
+              commitAnalyses: Array<{
+                sha: string
+                message: string
+                summary: string
+                technologies: string[]
+                patterns: string[]
+                filesChanged: number
+                impact: string
+                additions?: number
+                deletions?: number
+              }>
+              keyTechnologies: string[]
+              keyPatterns: string[]
+              recommendations: string[]
+            }
+          }
+          richAnalysis: unknown
+        }
+        metadata: {
+          totalContributions: number
+          processedContributions: number
+          totalDurationMs: number
+          remaining?: number
+        }
+      }>
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(queryKeys.agents.analyzeContributions(), data)
     },
   })
 }

@@ -20,8 +20,9 @@ export const LLM = {
   MAX_RECENT_COMMITS: 10,
   MAX_DESCRIPTION_LENGTH: 200,
   TEMPERATURE: {
-    ANALYSIS: 0.7,
-    CREATIVE: 0.8,
+    ANALYSIS: 1,
+    CREATIVE: 1,
+    DEFAULT: 1,
   },
   TOKENS_PER_CHAR: 0.25, // Roughly 4 chars per token
 } as const
