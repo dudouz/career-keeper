@@ -43,6 +43,13 @@
       "when": 1764942152437,
       "tag": "0005_messy_wither",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1765563492859,
+      "tag": "0006_glamorous_rattler",
+      "breakpoints": true
     }
   ]
 }

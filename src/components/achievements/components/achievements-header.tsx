@@ -1,15 +1,15 @@
 import { Button } from "@/components/ui/button"
 import { FileDown } from "lucide-react"
 
-interface BragHeaderProps {
+interface AchievementsHeaderProps {
   onExport: () => void
 }
 
-export function BragHeader({ onExport }: BragHeaderProps) {
+export function AchievementsHeader({ onExport }: AchievementsHeaderProps) {
   return (
     <div className="flex items-center justify-between">
       <div>
-        <h1 className="text-3xl font-bold">Brag List</h1>
+        <h1 className="text-3xl font-bold">Achievements</h1>
         <p className="text-muted-foreground">Your resume-worthy achievements from GitHub</p>
       </div>
       <div className="flex gap-2">
@@ -21,7 +21,3 @@ export function BragHeader({ onExport }: BragHeaderProps) {
     </div>
   )
 }
-
-
-
-

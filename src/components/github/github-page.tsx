@@ -283,7 +283,7 @@ export function GitHubPage() {
               {scanMutation.isPending ? "Scanning..." : "Rescan"}
             </Button>
             <Button asChild>
-              <Link href="/dashboard/brag-list">View Brag List →</Link>
+              <Link href="/dashboard/achievements">View Achievements →</Link>
             </Button>
           </div>
         </>

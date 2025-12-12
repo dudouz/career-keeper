@@ -1,6 +1,6 @@
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm"
 import type {
-  brags,
+  achievements,
   githubContributions,
   resumes,
   resumeSections,
@@ -17,7 +17,7 @@ export type Resume = InferSelectModel<typeof resumes>
 export type ResumeSection = InferSelectModel<typeof resumeSections>
 export type ResumeVersion = InferSelectModel<typeof resumeVersions>
 export type GitHubContribution = InferSelectModel<typeof githubContributions>
-export type Brag = InferSelectModel<typeof brags>
+export type Achievement = InferSelectModel<typeof achievements>
 // export type UserSession = InferSelectModel<typeof userSessions>
 
 // Insert types (writing to database)
@@ -26,7 +26,7 @@ export type NewResume = InferInsertModel<typeof resumes>
 export type NewResumeSection = InferInsertModel<typeof resumeSections>
 export type NewResumeVersion = InferInsertModel<typeof resumeVersions>
 export type NewGitHubContribution = InferInsertModel<typeof githubContributions>
-export type NewBrag = InferInsertModel<typeof brags>
+export type NewAchievement = InferInsertModel<typeof achievements>
 // export type NewUserSession = InferInsertModel<typeof userSessions>
 
 // Subscription tiers
@@ -135,11 +135,11 @@ export interface Release {
   downloadCount?: number
 }
 
-// Brag types
-export type BragType = "commit" | "pr" | "issue" | "release"
-export type BragReviewStatus = "pending" | "reviewed" | "archived"
+// Achievement types
+export type AchievementType = "commit" | "pr" | "issue" | "release"
+export type AchievementReviewStatus = "pending" | "reviewed" | "archived"
 
-export interface BragReviewData {
+export interface AchievementReviewData {
   relevance?: number // 1-5
   resumeSectionId?: string
   techTags?: string[]

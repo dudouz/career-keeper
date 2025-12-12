@@ -82,7 +82,7 @@ export function GithubOnboarding({ completedSteps, onSuccess, onSkip }: GithubOn
         <CardDescription>
           {completedSteps.has("github")
             ? "You can skip this step or reconnect with a different token"
-            : "We'll scan your repositories and contributions to build your brag list"}
+            : "We'll scan your repositories and contributions to build your achievements"}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">

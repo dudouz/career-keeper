@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button"
 
-interface BragSelectionControlsProps {
+interface AchievementsSelectionControlsProps {
   totalCount: number
   selectedCount: number
   onSelectAll: () => void
@@ -8,13 +8,13 @@ interface BragSelectionControlsProps {
   onClearSelection: () => void
 }
 
-export function BragSelectionControls({
+export function AchievementsSelectionControls({
   totalCount,
   selectedCount,
   onSelectAll,
   onEditSelected,
   onClearSelection,
-}: BragSelectionControlsProps) {
+}: AchievementsSelectionControlsProps) {
   if (totalCount === 0) return null
 
   return (
@@ -37,4 +37,3 @@ export function BragSelectionControls({
     </div>
   )
 }
-

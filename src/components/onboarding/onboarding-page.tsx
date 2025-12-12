@@ -109,7 +109,7 @@ export function OnboardingPage() {
   }
 
   const handleFinish = () => {
-    router.push("/dashboard/brag-list")
+    router.push("/dashboard/achievements")
   }
 
   const isCheckingStatus = loadingGithubStatus || loadingOpenAIStatus || loadingResumes
@@ -216,12 +216,12 @@ export function OnboardingPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <Card className="border-2">
                     <CardHeader>
-                      <CardTitle className="text-lg">Brag List</CardTitle>
+                      <CardTitle className="text-lg">Achievements</CardTitle>
                       <CardDescription>View and export your achievements</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <Button onClick={() => router.push("/dashboard/brag-list")} className="w-full">
-                        View Brag List
+                      <Button onClick={() => router.push("/dashboard/achievements")} className="w-full">
+                        View Achievements
                       </Button>
                     </CardContent>
                   </Card>

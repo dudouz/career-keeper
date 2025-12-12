@@ -3,36 +3,42 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { Pagination } from "@/components/ui/pagination"
+import { useAchievementsQuery, useAchievementStatsQuery, useResumesQuery } from "@/lib/api/queries"
 import { PAGINATION } from "@/lib/constants"
-import { useBragsQuery, useBragStatsQuery, useResumesQuery } from "@/lib/api/queries"
-import type { BragType } from "@/lib/db/types"
+import type { AchievementType } from "@/lib/db/types"
 import type { ResumeWithSections } from "@/lib/services/resume/resume.types"
 import { Loader2 } from "lucide-react"
 import { useEffect, useState } from "react"
-import { BragReviewModal } from "../brags/brag-review-modal"
-import { BragFilters } from "./components/brag-filters"
-import { BragHeader } from "./components/brag-header"
-import { BragList } from "./components/brag-list"
-import { BragSelectionControls } from "./components/brag-selection-controls"
-import { BragStats } from "./components/brag-stats"
+import { AchievementReviewModal } from "./components/achievement-review-modal"
+import { AchievementsFilters } from "./components/achievements-filters"
+import { AchievementsHeader } from "./components/achievements-header"
+import { AchievementsList } from "./components/achievements-list"
+import { AchievementsSelectionControls } from "./components/achievements-selection-controls"
+import { AchievementsStats } from "./components/achievements-stats"
 import { BulkEditPanel } from "./components/bulk-edit-panel"
-import { PendingBragsAlert } from "./components/pending-brags-alert"
+import { PendingAchievementsAlert } from "./components/pending-achievements-alert"
 import type { ReviewStatusFilter, SortOrder } from "./components/types"
-import { exportBragsToMarkdown, filterBrags, sortBrags } from "./components/utils"
+import {
+  exportAchievementsToMarkdown,
+  filterAchievements,
+  sortAchievements,
+} from "./components/utils"
 
-export function BragListPage() {
-  const { data: stats } = useBragStatsQuery()
+export function AchievementsPage() {
+  const { data: stats } = useAchievementStatsQuery()
   const { data: resumesData } = useResumesQuery()
 
-  const [typeFilter, setTypeFilter] = useState<BragType | "all">("all")
+  const [typeFilter, setTypeFilter] = useState<AchievementType | "all">("all")
   const [reviewStatusFilter, setReviewStatusFilter] = useState<ReviewStatusFilter>("all")
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest")
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedBrags, setSelectedBrags] = useState<Set<string>>(new Set())
-  const [selectedBragForReview, setSelectedBragForReview] = useState<string | null>(null)
+  const [selectedAchievements, setSelectedAchievements] = useState<Set<string>>(new Set())
+  const [selectedAchievementForReview, setSelectedAchievementForReview] = useState<string | null>(
+    null
+  )
   const [showBulkEdit, setShowBulkEdit] = useState(false)
-  const [currentPage, setCurrentPage] = useState(PAGINATION.DEFAULT_PAGE)
-  const [pageSize, setPageSize] = useState(PAGINATION.DEFAULT_PAGE_SIZE)
+  const [currentPage, setCurrentPage] = useState<number>(PAGINATION.DEFAULT_PAGE)
+  const pageSize = PAGINATION.DEFAULT_PAGE_SIZE
 
   // Bulk edit state
   const [bulkRelevance, setBulkRelevance] = useState<number | undefined>()
@@ -54,10 +60,10 @@ export function BragListPage() {
   }
 
   const {
-    data: bragsData,
+    data: achievementsData,
     isLoading,
     refetch,
-  } = useBragsQuery({
+  } = useAchievementsQuery({
     reviewStatus: reviewStatusMap[reviewStatusFilter],
     type: typeFilter === "all" ? undefined : typeFilter,
     page: currentPage,
@@ -65,9 +71,9 @@ export function BragListPage() {
     enabled: true,
   })
 
-  const brags = bragsData?.brags || []
-  const totalBrags = bragsData?.total || 0
-  const totalPages = Math.ceil(totalBrags / pageSize)
+  const achievements = achievementsData?.achievements || []
+  const totalAchievements = achievementsData?.total || 0
+  const totalPages = Math.ceil(totalAchievements / pageSize)
   const resumes = (resumesData?.resumes || []) as unknown as ResumeWithSections[]
   const allSections: Array<{ id: string; label: string }> = resumes.flatMap((resume) =>
     resume.sections.map((section) => ({
@@ -77,41 +83,44 @@ export function BragListPage() {
   )
 
   // Filter and sort brags (client-side for current page only)
-  const filteredBrags = filterBrags(brags, searchQuery)
-  const sortedBrags = sortBrags(filteredBrags, sortOrder)
+  const filteredAchievements = filterAchievements(achievementsData?.achievements || [], searchQuery)
+  const sortedAchievements = sortAchievements(filteredAchievements, sortOrder)
 
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(PAGINATION.DEFAULT_PAGE)
   }, [reviewStatusFilter, typeFilter, searchQuery])
 
-  // Close modal if selected brag is no longer in the list (e.g., after refetch or filter change)
+  // Close modal if selected achievement is no longer in the list (e.g., after refetch or filter change)
   useEffect(() => {
-    if (selectedBragForReview && !sortedBrags.find((b) => b.id === selectedBragForReview)) {
-      setSelectedBragForReview(null)
+    if (
+      selectedAchievementForReview &&
+      !sortedAchievements.find((a) => a.id === selectedAchievementForReview)
+    ) {
+      setSelectedAchievementForReview(null)
     }
-  }, [selectedBragForReview, sortedBrags])
+  }, [selectedAchievementForReview, sortedAchievements])
 
-  const toggleSelectBrag = (bragId: string) => {
-    const newSelected = new Set(selectedBrags)
-    if (newSelected.has(bragId)) {
-      newSelected.delete(bragId)
+  const toggleSelectAchievement = (achievementId: string) => {
+    const newSelected = new Set(selectedAchievements)
+    if (newSelected.has(achievementId)) {
+      newSelected.delete(achievementId)
     } else {
-      newSelected.add(bragId)
+      newSelected.add(achievementId)
     }
-    setSelectedBrags(newSelected)
+    setSelectedAchievements(newSelected)
   }
 
   const toggleSelectAll = () => {
-    if (selectedBrags.size === sortedBrags.length) {
-      setSelectedBrags(new Set())
+    if (selectedAchievements.size === sortedAchievements.length) {
+      setSelectedAchievements(new Set())
     } else {
-      setSelectedBrags(new Set(sortedBrags.map((b) => b.id)))
+      setSelectedAchievements(new Set(sortedAchievements.map((a) => a.id)))
     }
   }
 
   const handleBulkUpdate = async () => {
-    if (selectedBrags.size === 0) return
+    if (selectedAchievements.size === 0) return
 
     setIsBulkUpdating(true)
     try {
@@ -131,21 +140,21 @@ export function BragListPage() {
         updateData.techTags = bulkTechTags
       }
 
-      const response = await fetch("/api/brags/bulk", {
+      const response = await fetch("/api/achievements/bulk", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          bragIds: Array.from(selectedBrags),
+          achievementIds: Array.from(selectedAchievements),
           ...updateData,
         }),
       })
 
       if (!response.ok) {
-        throw new Error("Failed to update brags")
+        throw new Error("Failed to update achievements")
       }
 
       // Reset bulk edit state
-      setSelectedBrags(new Set())
+      setSelectedAchievements(new Set())
       setShowBulkEdit(false)
       setBulkRelevance(undefined)
       setBulkResumeSectionId(null)
@@ -160,7 +169,7 @@ export function BragListPage() {
   }
 
   const performBulkArchive = async () => {
-    if (selectedBrags.size === 0) return
+    if (selectedAchievements.size === 0) return
 
     setIsBulkUpdating(true)
     try {
@@ -168,7 +177,7 @@ export function BragListPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          bragIds: Array.from(selectedBrags),
+          achievementIds: Array.from(selectedAchievements),
           reviewStatus: "archived",
         }),
       })
@@ -177,7 +186,7 @@ export function BragListPage() {
         throw new Error("Failed to archive brags")
       }
 
-      setSelectedBrags(new Set())
+      setSelectedAchievements(new Set())
       setShowBulkEdit(false)
       refetch()
     } catch (error) {
@@ -189,7 +198,7 @@ export function BragListPage() {
   }
 
   const handleBulkArchive = () => {
-    if (selectedBrags.size === 0) return
+    if (selectedAchievements.size === 0) return
     setShowArchiveConfirm(true)
   }
 
@@ -205,14 +214,14 @@ export function BragListPage() {
   }
 
   const exportToMarkdown = () => {
-    exportBragsToMarkdown(sortedBrags)
+    exportAchievementsToMarkdown(sortedAchievements)
   }
 
   if (isLoading) {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Brag List</h1>
+          <h1 className="text-3xl font-bold">Achievements</h1>
           <p className="text-muted-foreground">Your resume-worthy achievements from GitHub</p>
         </div>
         <Card>
@@ -227,37 +236,39 @@ export function BragListPage() {
 
   return (
     <div className="space-y-6">
-      <BragHeader onExport={exportToMarkdown} />
+      <AchievementsHeader onExport={exportToMarkdown} />
 
       {stats && (
-        <PendingBragsAlert
+        <PendingAchievementsAlert
           pendingCount={stats.pending}
           onReviewClick={() => {
-            // Find first pending brag from current list (no filter change, no refetch)
-            const firstPendingBrag = brags.find((brag) => brag.reviewStatus === "pending")
-            if (firstPendingBrag) {
-              setSelectedBragForReview(firstPendingBrag.id)
+            // Find first pending achievement from current list (no filter change, no refetch)
+            const firstPendingAchievement = achievements.find(
+              (achievement) => achievement.reviewStatus === "pending"
+            )
+            if (firstPendingAchievement) {
+              setSelectedAchievementForReview(firstPendingAchievement.id)
             }
           }}
         />
       )}
 
-      {stats && <BragStats stats={stats} selectedCount={selectedBrags.size} />}
+      {stats && <AchievementsStats stats={stats} selectedCount={selectedAchievements.size} />}
 
       <ConfirmationDialog
         open={showArchiveConfirm}
         onOpenChange={setShowArchiveConfirm}
-        title="Archive Brags"
-        description={`Are you sure you want to archive ${selectedBrags.size} brag(s)?`}
+        title="Archive Achievements"
+        description={`Are you sure you want to archive ${selectedAchievements.size} achievement(s)?`}
         confirmText="Archive"
         cancelText="Cancel"
         variant="destructive"
         onConfirm={performBulkArchive}
       />
 
-      {showBulkEdit && selectedBrags.size > 0 && (
+      {showBulkEdit && selectedAchievements.size > 0 && (
         <BulkEditPanel
-          selectedCount={selectedBrags.size}
+          selectedCount={selectedAchievements.size}
           relevance={bulkRelevance}
           resumeSectionId={bulkResumeSectionId}
           techTags={bulkTechTags}
@@ -272,14 +283,14 @@ export function BragListPage() {
           onUpdate={handleBulkUpdate}
           onArchive={handleBulkArchive}
           onCancel={() => {
-            setSelectedBrags(new Set())
+            setSelectedAchievements(new Set())
             setShowBulkEdit(false)
           }}
           onClose={() => setShowBulkEdit(false)}
         />
       )}
 
-      <BragFilters
+      <AchievementsFilters
         searchQuery={searchQuery}
         reviewStatusFilter={reviewStatusFilter}
         typeFilter={typeFilter}
@@ -290,20 +301,24 @@ export function BragListPage() {
         onSortChange={setSortOrder}
       />
 
-      <BragSelectionControls
-        totalCount={sortedBrags.length}
-        selectedCount={selectedBrags.size}
+      <AchievementsSelectionControls
+        totalCount={sortedAchievements.length}
+        selectedCount={selectedAchievements.size}
         onSelectAll={toggleSelectAll}
         onEditSelected={() => setShowBulkEdit(true)}
-        onClearSelection={() => setSelectedBrags(new Set())}
+        onClearSelection={() => setSelectedAchievements(new Set())}
       />
 
-      {totalBrags > 0 && (
+      {totalAchievements > 0 && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <div>
-            Showing <span className="font-medium text-foreground">{((currentPage - 1) * pageSize) + 1}</span> to{" "}
-            <span className="font-medium text-foreground">{Math.min(currentPage * pageSize, totalBrags)}</span> of{" "}
-            <span className="font-medium text-foreground">{totalBrags}</span> results
+            Showing{" "}
+            <span className="font-medium text-foreground">{(currentPage - 1) * pageSize + 1}</span>{" "}
+            to{" "}
+            <span className="font-medium text-foreground">
+              {Math.min(currentPage * pageSize, totalAchievements)}
+            </span>{" "}
+            of <span className="font-medium text-foreground">{totalAchievements}</span> results
             {totalPages > 1 && (
               <span className="ml-2">
                 (Page <span className="font-medium text-foreground">{currentPage}</span> of{" "}
@@ -314,52 +329,56 @@ export function BragListPage() {
         </div>
       )}
 
-      <BragList
-        brags={sortedBrags}
-        selectedBrags={selectedBrags}
-        onSelectBrag={toggleSelectBrag}
-        onReviewBrag={(bragId) => setSelectedBragForReview(bragId)}
+      <AchievementsList
+        achievements={sortedAchievements}
+        selectedAchievements={selectedAchievements}
+        onSelectAchievement={toggleSelectAchievement}
+        onReviewAchievement={(achievementId) => setSelectedAchievementForReview(achievementId)}
       />
 
-      {totalBrags > 0 && (
+      {totalAchievements > 0 && (
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
           pageSize={pageSize}
-          total={totalBrags}
+          total={totalAchievements}
           onPageChange={setCurrentPage}
         />
       )}
 
-      {selectedBragForReview &&
+      {selectedAchievementForReview &&
         (() => {
-          const currentBrag = sortedBrags.find((b) => b.id === selectedBragForReview)
+          const currentAchievement = sortedAchievements.find(
+            (a) => a.id === selectedAchievementForReview
+          )
 
-          // Don't render modal if brag is not found (useEffect will close it)
-          if (!currentBrag) {
+          // Don't render modal if achievement is not found (useEffect will close it)
+          if (!currentAchievement) {
             return null
           }
 
-          const currentIndex = sortedBrags.findIndex((b) => b.id === selectedBragForReview)
-          const isPending = currentBrag.reviewStatus === "pending"
+          const currentIndex = sortedAchievements.findIndex(
+            (a) => a.id === selectedAchievementForReview
+          )
+          const isPending = currentAchievement.reviewStatus === "pending"
 
           return (
-            <BragReviewModal
-              brag={currentBrag}
-              allBrags={sortedBrags}
+            <AchievementReviewModal
+              achievement={currentAchievement}
+              allAchievements={sortedAchievements}
               currentIndex={currentIndex}
-              onClose={() => setSelectedBragForReview(null)}
+              onClose={() => setSelectedAchievementForReview(null)}
               onSave={() => {
                 refetch()
               }}
-              onNavigate={(bragId) => {
-                // Verify brag exists before navigating
-                const targetBrag = sortedBrags.find((b) => b.id === bragId)
-                if (targetBrag) {
-                  setSelectedBragForReview(bragId)
+              onNavigate={(achievementId) => {
+                // Verify achievement exists before navigating
+                const targetAchievement = sortedAchievements.find((a) => a.id === achievementId)
+                if (targetAchievement) {
+                  setSelectedAchievementForReview(achievementId)
                 } else {
-                  // If brag not found, close modal
-                  setSelectedBragForReview(null)
+                  // If achievement not found, close modal
+                  setSelectedAchievementForReview(null)
                 }
               }}
               autoNavigateToNextPending={isPending}

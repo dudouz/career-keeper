@@ -1,11 +1,11 @@
-import type { BragType } from "@/lib/db/types"
+import type { AchievementType } from "@/lib/db/types"
 
 export type SortOrder = "newest" | "oldest" | "most-impact"
 export type ReviewStatusFilter = "all" | "pending" | "reviewed" | "archived"
 
-export interface BragListItem {
+export interface AchievementListItem {
   id: string
-  type: BragType
+  type: AchievementType
   title: string
   description?: string | null
   date: Date | string
@@ -21,7 +21,7 @@ export interface BragListItem {
   reviewedAt?: Date | null
 }
 
-export interface BragStats {
+export interface AchievementsStats {
   pending: number
   reviewed: number
   archived: number
@@ -32,4 +32,3 @@ export interface ResumeSectionOption {
   id: string
   label: string
 }
-

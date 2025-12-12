@@ -2,7 +2,7 @@ import { db } from "@/lib/db"
 import { githubContributions, users } from "@/lib/db/schema"
 import { GitHubClient } from "@/lib/github/client"
 import { decryptToken, encryptToken } from "@/lib/github/encryption"
-import { createBrag } from "@/lib/services/brags"
+import { createAchievement } from "@/lib/services/achievements"
 import { and, eq, gte } from "drizzle-orm"
 import type {
   ConnectGitHubParams,
@@ -171,8 +171,8 @@ export async function scanGitHubContributions(params: ScanGitHubParams): Promise
     })
   }
 
-  // Create pending brags from contributions
-  await createBragsFromContributions(userId, contributions)
+  // Create pending achievements from contributions
+  await createAchievementsFromContributions(userId, contributions)
 
   return {
     contributions,
@@ -181,18 +181,18 @@ export async function scanGitHubContributions(params: ScanGitHubParams): Promise
 }
 
 /**
- * Create pending brags from GitHub contributions
+ * Create pending achievements from GitHub contributions
  */
-async function createBragsFromContributions(
+async function createAchievementsFromContributions(
   userId: string,
   contributions: GitHubContributionData
 ): Promise<void> {
-  const createdBrags: string[] = []
+  const createdAchievements: string[] = []
 
-  // Create brags from commits
+  // Create achievements from commits
   for (const commit of contributions.commits) {
     try {
-      await createBrag({
+      await createAchievement({
         userId,
         type: "commit",
         title: commit.message,
@@ -203,17 +203,17 @@ async function createBragsFromContributions(
         githubId: commit.sha,
         githubType: `commit:${commit.sha}`,
       })
-      createdBrags.push(`commit:${commit.sha}`)
+      createdAchievements.push(`commit:${commit.sha}`)
     } catch {
-      // Skip duplicates (already handled by createBrag)
+      // Skip duplicates (already handled by createAchievement)
       console.log(`[GitHub Service] Skipped duplicate commit: ${commit.sha}`)
     }
   }
 
-  // Create brags from pull requests
+  // Create achievements from pull requests
   for (const pr of contributions.pullRequests) {
     try {
-      await createBrag({
+      await createAchievement({
         userId,
         type: "pr",
         title: pr.title,
@@ -223,16 +223,16 @@ async function createBragsFromContributions(
         githubId: pr.number.toString(),
         githubType: `pr:${pr.repository}:${pr.number}`,
       })
-      createdBrags.push(`pr:${pr.repository}:${pr.number}`)
+      createdAchievements.push(`pr:${pr.repository}:${pr.number}`)
     } catch {
       console.log(`[GitHub Service] Skipped duplicate PR: ${pr.repository}#${pr.number}`)
     }
   }
 
-  // Create brags from issues
+  // Create achievements from issues
   for (const issue of contributions.issues) {
     try {
-      await createBrag({
+      await createAchievement({
         userId,
         type: "issue",
         title: issue.title,
@@ -242,16 +242,16 @@ async function createBragsFromContributions(
         githubId: issue.number.toString(),
         githubType: `issue:${issue.repository}:${issue.number}`,
       })
-      createdBrags.push(`issue:${issue.repository}:${issue.number}`)
+      createdAchievements.push(`issue:${issue.repository}:${issue.number}`)
     } catch {
       console.log(`[GitHub Service] Skipped duplicate issue: ${issue.repository}#${issue.number}`)
     }
   }
 
-  // Create brags from releases
+  // Create achievements from releases
   for (const release of contributions.releases) {
     try {
-      await createBrag({
+      await createAchievement({
         userId,
         type: "release",
         title: release.name,
@@ -262,7 +262,7 @@ async function createBragsFromContributions(
         githubId: release.tagName,
         githubType: `release:${release.repository}:${release.tagName}`,
       })
-      createdBrags.push(`release:${release.repository}:${release.tagName}`)
+      createdAchievements.push(`release:${release.repository}:${release.tagName}`)
     } catch {
       console.log(
         `[GitHub Service] Skipped duplicate release: ${release.repository}@${release.tagName}`
@@ -270,7 +270,9 @@ async function createBragsFromContributions(
     }
   }
 
-  console.log(`[GitHub Service] Created ${createdBrags.length} pending brags from contributions`)
+  console.log(
+    `[GitHub Service] Created ${createdAchievements.length} pending achievements from contributions`
+  )
 }
 
 /**

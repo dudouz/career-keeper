@@ -3,18 +3,24 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Edit, ExternalLink } from "lucide-react"
-import { BragTypeIcon } from "./brag-type-icon"
-import type { BragListItem } from "./types"
+import { AchievementTypeIcon } from "./achievement-type-icon"
+import type { AchievementListItem } from "./types"
 
-interface BragCardProps {
-  brag: BragListItem
+interface AchievementsCardProps {
+  achievement: AchievementListItem
   isSelected: boolean
   onSelect: () => void
   onReview: () => void
 }
 
-export function BragCard({ brag, isSelected, onSelect, onReview }: BragCardProps) {
-  const bragDate = typeof brag.date === "string" ? new Date(brag.date) : brag.date
+export function AchievementsCard({
+  achievement,
+  isSelected,
+  onSelect,
+  onReview,
+}: AchievementsCardProps) {
+  const achievementDate =
+    typeof achievement.date === "string" ? new Date(achievement.date) : achievement.date
 
   return (
     <Card
@@ -35,32 +41,36 @@ export function BragCard({ brag, isSelected, onSelect, onReview }: BragCardProps
 
           <div className="flex-1 space-y-2">
             <div className="flex items-center gap-2">
-              <BragTypeIcon type={brag.type} />
-              <Badge variant={brag.reviewStatus === "reviewed" ? "default" : "secondary"}>
-                {brag.type.toUpperCase()}
+              <AchievementTypeIcon type={achievement.type} />
+              <Badge variant={achievement.reviewStatus === "reviewed" ? "default" : "secondary"}>
+                {achievement.type.toUpperCase()}
               </Badge>
-              {brag.reviewStatus === "pending" && (
+              {achievement.reviewStatus === "pending" && (
                 <Badge variant="outline" className="text-yellow-600">
                   Pending
                 </Badge>
               )}
-              {brag.relevance && <Badge variant="outline">Relevance: {brag.relevance}/5</Badge>}
+              {achievement.relevance && (
+                <Badge variant="outline">Relevance: {achievement.relevance}/5</Badge>
+              )}
             </div>
-            <h3 className="text-lg font-semibold">{brag.title}</h3>
+            <h3 className="text-lg font-semibold">{achievement.title}</h3>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span>{brag.repository}</span>
+              <span>{achievement.repository}</span>
               <span>•</span>
-              <span>{bragDate.toLocaleDateString()}</span>
+              <span>{achievementDate.toLocaleDateString()}</span>
             </div>
-            {brag.description && (
-              <p className="line-clamp-2 text-sm text-muted-foreground">{brag.description}</p>
+            {achievement.description && (
+              <p className="line-clamp-2 text-sm text-muted-foreground">
+                {achievement.description}
+              </p>
             )}
-            {brag.customDescription && (
-              <p className="text-sm text-foreground">{brag.customDescription}</p>
+            {achievement.customDescription && (
+              <p className="text-sm text-foreground">{achievement.customDescription}</p>
             )}
-            {brag.techTags && brag.techTags.length > 0 && (
+            {achievement.techTags && achievement.techTags.length > 0 && (
               <div className="flex flex-wrap gap-2">
-                {brag.techTags.map((tag) => (
+                {achievement.techTags.map((tag) => (
                   <Badge key={tag} variant="secondary">
                     {tag}
                   </Badge>
@@ -69,11 +79,15 @@ export function BragCard({ brag, isSelected, onSelect, onReview }: BragCardProps
             )}
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => window.open(brag.url, "_blank")}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.open(achievement.url, "_blank")}
+            >
               <ExternalLink className="mr-2 h-4 w-4" />
               View
             </Button>
-            {brag.reviewStatus === "pending" ? (
+            {achievement.reviewStatus === "pending" ? (
               <Button size="sm" onClick={onReview}>
                 Review
               </Button>

@@ -47,7 +47,7 @@ export async function DashboardMainPage() {
           icon={FileText}
         />
         <StatsCard
-          title="Brag Items"
+          title="Achievements"
           value="0"
           description="Tracked contributions"
           icon={Sparkles}
@@ -94,11 +94,11 @@ export async function DashboardMainPage() {
                   </div>
                 </Button>
               </Link>
-              <Link href="/dashboard/brag-list">
+              <Link href="/dashboard/achievements">
                 <Button variant="outline" className="w-full justify-start h-auto py-4 gap-3">
                   <FileCheck className="h-5 w-5 shrink-0" />
                   <div className="text-left">
-                    <div className="font-semibold">View Brag List</div>
+                    <div className="font-semibold">View Achievements</div>
                     <div className="text-xs text-muted-foreground">
                       See your achievements
                     </div>

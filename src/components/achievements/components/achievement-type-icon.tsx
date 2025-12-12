@@ -1,7 +1,7 @@
-import type { BragType } from "@/lib/db/types"
+import { AchievementType } from "@/lib/db/types"
 import { FileText, GitCommit, GitPullRequest, Rocket } from "lucide-react"
 
-export function BragTypeIcon({ type }: { type: BragType }) {
+export function AchievementTypeIcon({ type }: { type: AchievementType }) {
   switch (type) {
     case "commit":
       return <GitCommit className="h-4 w-4" />
@@ -13,7 +13,3 @@ export function BragTypeIcon({ type }: { type: BragType }) {
       return <Rocket className="h-4 w-4" />
   }
 }
-
-
-
-

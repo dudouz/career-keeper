@@ -15,10 +15,10 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import {
-  useArchiveBragMutation,
+  useArchiveAchievementMutation,
   useResumesQuery,
-  useUnarchiveBragMutation,
-  useUpdateBragReviewMutation,
+  useUnarchiveAchievementMutation,
+  useUpdateAchievementReviewMutation,
 } from "@/lib/api/queries"
 import type { ResumeWithSections } from "@/lib/services/resume/resume.types"
 import {
@@ -32,11 +32,11 @@ import {
   X,
 } from "lucide-react"
 import { useEffect, useState } from "react"
-import type { BragListItem } from "../brag-list/components/types"
+import type { AchievementListItem } from "./types"
 
-interface BragReviewModalProps {
-  brag: BragListItem
-  allBrags: BragListItem[]
+interface AchievementReviewModalProps {
+  achievement: AchievementListItem
+  allAchievements: AchievementListItem[]
   currentIndex: number
   onClose: () => void
   onSave: () => void
@@ -44,29 +44,30 @@ interface BragReviewModalProps {
   autoNavigateToNextPending?: boolean
 }
 
-export function BragReviewModal({
-  brag,
-  allBrags,
+export function AchievementReviewModal({
+  achievement,
+  allAchievements,
   currentIndex,
   onClose,
   onSave,
   onNavigate,
   autoNavigateToNextPending = false,
-}: BragReviewModalProps) {
+}: AchievementReviewModalProps) {
   const { data: resumesData } = useResumesQuery()
-  const updateMutation = useUpdateBragReviewMutation()
-  const unarchiveMutation = useUnarchiveBragMutation()
-  const archiveMutation = useArchiveBragMutation()
+  const updateMutation = useUpdateAchievementReviewMutation()
+  const unarchiveMutation = useUnarchiveAchievementMutation()
+  const archiveMutation = useArchiveAchievementMutation()
   const [open, setOpen] = useState(true)
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false)
 
   // Normalize date to Date object
-  const bragDate = typeof brag.date === "string" ? new Date(brag.date) : brag.date
+  const achievementDate =
+    typeof achievement.date === "string" ? new Date(achievement.date) : achievement.date
 
-  // Reset open state when brag changes (navigation)
+  // Reset open state when achievement changes (navigation)
   useEffect(() => {
     setOpen(true)
-  }, [brag.id])
+  }, [achievement.id])
 
   // Handle dialog close
   const handleOpenChange = (isOpen: boolean) => {
@@ -76,30 +77,33 @@ export function BragReviewModal({
     }
   }
 
-  const [relevance, setRelevance] = useState<number | undefined>(brag.relevance || undefined)
+  const [relevance, setRelevance] = useState<number | undefined>(achievement.relevance || undefined)
   const [resumeSectionId, setResumeSectionId] = useState<string | null>(
-    brag.resumeSectionId || null
+    achievement.resumeSectionId || null
   )
-  const [techTags, setTechTags] = useState<string[]>(brag.techTags || [])
+  const [techTags, setTechTags] = useState<string[]>(achievement.techTags || [])
   const [techTagInput, setTechTagInput] = useState("")
-  const [customDescription, setCustomDescription] = useState<string>(brag.customDescription || "")
+  const [customDescription, setCustomDescription] = useState<string>(
+    achievement.customDescription || ""
+  )
 
-  // Find previous and next brags
-  const previousBrag = currentIndex > 0 ? allBrags[currentIndex - 1] : null
-  const nextBrag = currentIndex < allBrags.length - 1 ? allBrags[currentIndex + 1] : null
+  // Find previous and next achievements
+  const previousAchievement = currentIndex > 0 ? allAchievements[currentIndex - 1] : null
+  const nextAchievement =
+    currentIndex < allAchievements.length - 1 ? allAchievements[currentIndex + 1] : null
 
-  // Find next pending brag
-  const findNextPendingBrag = () => {
+  // Find next pending achievement
+  const findNextPendingAchievement = () => {
     const startIndex = currentIndex + 1
-    for (let i = startIndex; i < allBrags.length; i++) {
-      if (allBrags[i].reviewStatus === "pending") {
-        return allBrags[i]
+    for (let i = startIndex; i < allAchievements.length; i++) {
+      if (allAchievements[i].reviewStatus === "pending") {
+        return allAchievements[i]
       }
     }
     // If not found after current, search from beginning
     for (let i = 0; i < currentIndex; i++) {
-      if (allBrags[i].reviewStatus === "pending") {
-        return allBrags[i]
+      if (allAchievements[i].reviewStatus === "pending") {
+        return allAchievements[i]
       }
     }
     return null
@@ -117,12 +121,12 @@ export function BragReviewModal({
         return
       }
 
-      if (e.key === "ArrowLeft" && previousBrag) {
+      if (e.key === "ArrowLeft" && previousAchievement) {
         e.preventDefault()
-        onNavigate(previousBrag.id)
-      } else if (e.key === "ArrowRight" && nextBrag) {
+        onNavigate(previousAchievement.id)
+      } else if (e.key === "ArrowRight" && nextAchievement) {
         e.preventDefault()
-        onNavigate(nextBrag.id)
+        onNavigate(nextAchievement.id)
       } else if (e.key === "Escape") {
         e.preventDefault()
         onClose()
@@ -131,7 +135,7 @@ export function BragReviewModal({
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [previousBrag, nextBrag, onNavigate, onClose])
+  }, [previousAchievement, nextAchievement, onNavigate, onClose])
 
   // Get all resume sections from all resumes
   const resumes = (resumesData?.resumes || []) as unknown as ResumeWithSections[]
@@ -156,7 +160,7 @@ export function BragReviewModal({
 
   const handleSave = async () => {
     await updateMutation.mutateAsync({
-      bragId: brag.id,
+      achievementId: achievement.id,
       relevance,
       resumeSectionId,
       techTags,
@@ -164,14 +168,14 @@ export function BragReviewModal({
     })
     onSave()
 
-    // Auto-navigate to next pending brag if enabled
+    // Auto-navigate to next pending achievement if enabled
     if (autoNavigateToNextPending) {
-      const nextPending = findNextPendingBrag()
+      const nextPending = findNextPendingAchievement()
       if (nextPending) {
         onNavigate(nextPending.id)
         return
       }
-      // If no next pending brag found, close modal
+      // If no next pending achievement found, close modal
       onClose()
       return
     }
@@ -181,13 +185,13 @@ export function BragReviewModal({
   }
 
   const handleArchive = async () => {
-    await archiveMutation.mutateAsync(brag.id)
+    await archiveMutation.mutateAsync(achievement.id)
     onSave()
     onClose()
   }
 
   const getTypeIcon = () => {
-    switch (brag.type) {
+    switch (achievement.type) {
       case "commit":
         return <GitCommit className="h-4 w-4" />
       case "pr":
@@ -204,8 +208,8 @@ export function BragReviewModal({
       <ConfirmationDialog
         open={showArchiveConfirm}
         onOpenChange={setShowArchiveConfirm}
-        title="Archive Brag"
-        description="Are you sure you want to archive this brag? You can unarchive it later if needed."
+        title="Archive Achievement"
+        description="Are you sure you want to archive this achievement? You can unarchive it later if needed."
         confirmText="Archive"
         cancelText="Cancel"
         variant="destructive"
@@ -220,14 +224,14 @@ export function BragReviewModal({
                 <div className="flex-1">
                   <div className="mb-2 flex items-center gap-2">
                     {getTypeIcon()}
-                    <Badge variant="secondary">{brag.type.toUpperCase()}</Badge>
+                    <Badge variant="secondary">{achievement.type.toUpperCase()}</Badge>
                     <span className="text-xs text-muted-foreground">
-                      {currentIndex + 1} / {allBrags.length}
+                      {currentIndex + 1} / {allAchievements.length}
                     </span>
                   </div>
-                  <CardTitle className="text-xl">{brag.title}</CardTitle>
+                  <CardTitle className="text-xl">{achievement.title}</CardTitle>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    {brag.repository} • {bragDate.toLocaleDateString()}
+                    {achievement.repository} • {achievementDate.toLocaleDateString()}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -236,18 +240,18 @@ export function BragReviewModal({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => previousBrag && onNavigate(previousBrag.id)}
-                      disabled={!previousBrag}
-                      title="Previous brag (←)"
+                      onClick={() => previousAchievement && onNavigate(previousAchievement.id)}
+                      disabled={!previousAchievement}
+                      title="Previous achievement (←)"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => nextBrag && onNavigate(nextBrag.id)}
-                      disabled={!nextBrag}
-                      title="Next brag (→)"
+                      onClick={() => nextAchievement && onNavigate(nextAchievement.id)}
+                      disabled={!nextAchievement}
+                      title="Next achievement (→)"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </Button>
@@ -257,10 +261,10 @@ export function BragReviewModal({
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Original Description */}
-              {brag.description && (
+              {achievement.description && (
                 <div>
                   <label className="text-sm font-medium">Original Description</label>
-                  <p className="mt-1 text-sm text-muted-foreground">{brag.description}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{achievement.description}</p>
                 </div>
               )}
 
@@ -348,7 +352,7 @@ export function BragReviewModal({
                 <Textarea
                   value={customDescription}
                   onChange={(e) => setCustomDescription(e.target.value)}
-                  placeholder="Describe what was done in this brag..."
+                  placeholder="Describe what was done in this achievement..."
                   rows={4}
                 />
               </div>
@@ -359,9 +363,11 @@ export function BragReviewModal({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => previousBrag && onNavigate(previousBrag.id)}
+                    onClick={() => previousAchievement && onNavigate(previousAchievement.id)}
                     disabled={
-                      !previousBrag || updateMutation.isPending || unarchiveMutation.isPending
+                      !previousAchievement ||
+                      updateMutation.isPending ||
+                      unarchiveMutation.isPending
                     }
                   >
                     <ChevronLeft className="mr-1 h-4 w-4" />
@@ -370,19 +376,21 @@ export function BragReviewModal({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => nextBrag && onNavigate(nextBrag.id)}
-                    disabled={!nextBrag || updateMutation.isPending || unarchiveMutation.isPending}
+                    onClick={() => nextAchievement && onNavigate(nextAchievement.id)}
+                    disabled={
+                      !nextAchievement || updateMutation.isPending || unarchiveMutation.isPending
+                    }
                   >
                     Next
                     <ChevronRight className="ml-1 h-4 w-4" />
                   </Button>
                 </div>
                 <div className="flex gap-2">
-                  {brag.reviewStatus === "archived" && (
+                  {achievement.reviewStatus === "archived" && (
                     <Button
                       variant="outline"
                       onClick={async () => {
-                        await unarchiveMutation.mutateAsync(brag.id)
+                        await unarchiveMutation.mutateAsync(achievement.id)
                         onSave()
                         onClose()
                       }}
@@ -406,7 +414,7 @@ export function BragReviewModal({
                   >
                     Cancel
                   </Button>
-                  {brag.reviewStatus !== "archived" && (
+                  {achievement.reviewStatus !== "archived" && (
                     <>
                       <Button
                         variant="outline"
@@ -442,7 +450,7 @@ export function BragReviewModal({
               {/* Link to GitHub */}
               <div className="border-t pt-2">
                 <Button variant="outline" size="sm" asChild className="w-full">
-                  <a href={brag.url} target="_blank" rel="noopener noreferrer">
+                  <a href={achievement.url} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="mr-2 h-4 w-4" />
                     View on GitHub
                   </a>

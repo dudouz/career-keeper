@@ -1,6 +1,6 @@
 "use client"
 
-import { PendingBragsBadge } from "@/components/brags/pending-brags-badge"
+import { PendingAchievementsBadge } from "@/components/achievements-badges/pending-achievements-badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { signOut } from "next-auth/react"
@@ -9,11 +9,11 @@ import { usePathname } from "next/navigation"
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard" },
-  { href: "/dashboard/github", label: "GitHub Scan" },
-  { href: "/dashboard/brag-list", label: "Brag List" },
-  { href: "/dashboard/resume", label: "Resume" },
-  { href: "/dashboard/summary", label: "Summary" },
-  { href: "/dashboard/resume/compare", label: "Resume Compare" },
+  { href: "/dashboard/github", label: "GitHub Scanner" },
+  { href: "/dashboard/achievements", label: "Achievements" },
+  { href: "/dashboard/resume", label: "Resume Builder" },
+  // { href: "/dashboard/summary", label: "Summary" },
+  // { href: "/dashboard/resume/compare", label: "Resume Compare" },
   // { href: "/dashboard/settings", label: "Settings" },
 ]
 
@@ -38,7 +38,7 @@ export function DashboardNav() {
               >
                 {item.label}
               </Link>
-              {item.href === "/dashboard/brag-list" && <PendingBragsBadge />}
+              {item.href === "/dashboard/achievements" && <PendingAchievementsBadge />}
             </div>
           ))}
         </div>

@@ -1,14 +1,16 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { AlertCircle } from "lucide-react"
-import type { ReviewStatusFilter } from "./types"
 
-interface PendingBragsAlertProps {
+interface PendingAchievementsAlertProps {
   pendingCount: number
   onReviewClick: () => void
 }
 
-export function PendingBragsAlert({ pendingCount, onReviewClick }: PendingBragsAlertProps) {
+export function PendingAchievementsAlert({
+  pendingCount,
+  onReviewClick,
+}: PendingAchievementsAlertProps) {
   if (pendingCount === 0) return null
 
   return (
@@ -18,7 +20,8 @@ export function PendingBragsAlert({ pendingCount, onReviewClick }: PendingBragsA
           <div className="flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-yellow-600" />
             <p className="font-medium">
-              You have <strong>{pendingCount}</strong> pending brag{pendingCount !== 1 ? "s" : ""} to review
+              You have <strong>{pendingCount}</strong> pending achievement
+              {pendingCount !== 1 ? "s" : ""} to review
             </p>
           </div>
           <Button
@@ -33,4 +36,3 @@ export function PendingBragsAlert({ pendingCount, onReviewClick }: PendingBragsA
     </Card>
   )
 }
-

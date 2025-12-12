@@ -197,7 +197,7 @@ export const HomePage = () => {
               <Card>
                 <CardHeader>
                   <div className="mb-2 text-3xl">📝</div>
-                  <CardTitle>Brag List Generator</CardTitle>
+                  <CardTitle>Achievements Generator</CardTitle>
                   <CardDescription>
                     Organize your accomplishments with smart categorization
                   </CardDescription>
@@ -269,7 +269,7 @@ export const HomePage = () => {
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="text-green-500">✓</span>
-                      <span>AI-powered brag list</span>
+                      <span>AI-powered achievements</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="text-green-500">✓</span>
