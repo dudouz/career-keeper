@@ -8,8 +8,8 @@ node_modules/
 # AI Tools 
 .taskmaster/
 **/*.md
-!/README.md
-
+!/README.md!
+!/CHANGELOG-AI-AGENT.md
 # Comment and uncomment this to enable/disable code review todos
 # !/CODE_REVIEW_TODOS.md
 **/*.mdc

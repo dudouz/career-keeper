@@ -1,5 +1,6 @@
-import OpenAI from "openai"
+import { LLM } from "@/lib/constants"
 import type { GitHubContributionData } from "@/lib/db/types"
+import OpenAI from "openai"
 
 export interface LLMClientConfig {
   apiKey: string
@@ -79,7 +80,7 @@ Return as JSON with this structure:
         },
       ],
       response_format: { type: "json_object" },
-      temperature: 0.7,
+      temperature: LLM.TEMPERATURE.ANALYSIS,
     })
 
     const content = completion.choices[0].message.content || "{}"
@@ -145,7 +146,7 @@ Return as JSON:
         },
       ],
       response_format: { type: "json_object" },
-      temperature: 0.8,
+      temperature: LLM.TEMPERATURE.CREATIVE,
     })
 
     const content = completion.choices[0].message.content || "{}"
@@ -205,7 +206,7 @@ Return as JSON:
         },
       ],
       response_format: { type: "json_object" },
-      temperature: 0.7,
+      temperature: LLM.TEMPERATURE.ANALYSIS,
     })
 
     const content = completion.choices[0].message.content || "{}"
