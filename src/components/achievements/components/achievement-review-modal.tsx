@@ -64,7 +64,7 @@ export function AchievementReviewModal({
   const achievementDate =
     typeof achievement.date === "string" ? new Date(achievement.date) : achievement.date
 
-  // Reset open state when brag changes (navigation)
+  // Reset open state when achievement changes (navigation)
   useEffect(() => {
     setOpen(true)
   }, [achievement.id])
@@ -87,13 +87,13 @@ export function AchievementReviewModal({
     achievement.customDescription || ""
   )
 
-  // Find previous and next brags
+  // Find previous and next achievements
   const previousAchievement = currentIndex > 0 ? allAchievements[currentIndex - 1] : null
   const nextAchievement =
     currentIndex < allAchievements.length - 1 ? allAchievements[currentIndex + 1] : null
 
-  // Find next pending brag
-  const findNextPendingBrag = () => {
+  // Find next pending achievement
+  const findNextPendingAchievement = () => {
     const startIndex = currentIndex + 1
     for (let i = startIndex; i < allAchievements.length; i++) {
       if (allAchievements[i].reviewStatus === "pending") {
@@ -168,14 +168,14 @@ export function AchievementReviewModal({
     })
     onSave()
 
-    // Auto-navigate to next pending brag if enabled
+    // Auto-navigate to next pending achievement if enabled
     if (autoNavigateToNextPending) {
-      const nextPending = findNextPendingBrag()
+      const nextPending = findNextPendingAchievement()
       if (nextPending) {
         onNavigate(nextPending.id)
         return
       }
-      // If no next pending brag found, close modal
+      // If no next pending achievement found, close modal
       onClose()
       return
     }

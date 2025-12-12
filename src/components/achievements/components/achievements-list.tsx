@@ -21,7 +21,7 @@ export function AchievementsList({
       <Card>
         <CardContent className="py-8 text-center">
           <AlertCircle className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
-          <p className="text-muted-foreground">No brags found matching your filters.</p>
+          <p className="text-muted-foreground">No achievements found matching your filters.</p>
         </CardContent>
       </Card>
     )

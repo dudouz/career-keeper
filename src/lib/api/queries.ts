@@ -50,14 +50,6 @@ export const queryKeys = {
     list: () => [...queryKeys.resume.all, "list"] as const,
     detail: (id: string) => [...queryKeys.resume.all, "detail", id] as const,
   },
-  // Brags
-  brags: {
-    all: ["brags"] as const,
-    list: (filters?: { reviewStatus?: string; type?: string; page?: number; pageSize?: number }) =>
-      [...queryKeys.brags.all, "list", filters] as const,
-    stats: () => [...queryKeys.brags.all, "stats"] as const,
-    detail: (id: string) => [...queryKeys.brags.all, "detail", id] as const,
-  },
   // Achievements
   achievements: {
     all: ["achievements"] as const,
@@ -547,7 +539,7 @@ export function useAchievementsQuery(
   } = options || {}
 
   return useQuery({
-    queryKey: queryKeys.brags.list({ reviewStatus, type, page, pageSize }),
+    queryKey: queryKeys.achievements.list({ reviewStatus, type, page, pageSize }),
     queryFn: async () => {
       const params = new URLSearchParams()
       if (reviewStatus) params.append("reviewStatus", reviewStatus)
@@ -557,9 +549,9 @@ export function useAchievementsQuery(
         params.append("offset", String((page - 1) * pageSize))
       }
 
-      const response = await fetch(`/api/brags?${params.toString()}`)
+      const response = await fetch(`/api/achievements?${params.toString()}`)
       if (!response.ok) {
-        throw new Error("Failed to fetch brags")
+        throw new Error("Failed to fetch achievements")
       }
       return response.json()
     },
@@ -594,7 +586,7 @@ export function useAchievementStatsQuery(
 // =============================================================================
 
 /**
- * Update brag review
+ * Update achievement review
  */
 export function useUpdateAchievementReviewMutation() {
   const queryClient = useQueryClient()

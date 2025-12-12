@@ -1,6 +1,6 @@
 "use client"
 
-import { PendingBragsBadge } from "@/components/brags/pending-brags-badge"
+import { PendingAchievementsBadge } from "@/components/achievements-badges/pending-achievements-badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { signOut } from "next-auth/react"
@@ -38,7 +38,7 @@ export function DashboardNav() {
               >
                 {item.label}
               </Link>
-              {item.href === "/dashboard/brag-list" && <PendingBragsBadge />}
+              {item.href === "/dashboard/achievements" && <PendingAchievementsBadge />}
             </div>
           ))}
         </div>

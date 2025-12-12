@@ -135,7 +135,7 @@ export interface Release {
   downloadCount?: number
 }
 
-// Brag types
+// Achievement types
 export type AchievementType = "commit" | "pr" | "issue" | "release"
 export type AchievementReviewStatus = "pending" | "reviewed" | "archived"
 

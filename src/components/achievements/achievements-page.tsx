@@ -91,7 +91,7 @@ export function AchievementsPage() {
     setCurrentPage(PAGINATION.DEFAULT_PAGE)
   }, [reviewStatusFilter, typeFilter, searchQuery])
 
-  // Close modal if selected brag is no longer in the list (e.g., after refetch or filter change)
+  // Close modal if selected achievement is no longer in the list (e.g., after refetch or filter change)
   useEffect(() => {
     if (
       selectedAchievementForReview &&
@@ -221,7 +221,7 @@ export function AchievementsPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Brag List</h1>
+          <h1 className="text-3xl font-bold">Achievements</h1>
           <p className="text-muted-foreground">Your resume-worthy achievements from GitHub</p>
         </div>
         <Card>
@@ -352,7 +352,7 @@ export function AchievementsPage() {
             (a) => a.id === selectedAchievementForReview
           )
 
-          // Don't render modal if brag is not found (useEffect will close it)
+          // Don't render modal if achievement is not found (useEffect will close it)
           if (!currentAchievement) {
             return null
           }
@@ -372,7 +372,7 @@ export function AchievementsPage() {
                 refetch()
               }}
               onNavigate={(achievementId) => {
-                // Verify brag exists before navigating
+                // Verify achievement exists before navigating
                 const targetAchievement = sortedAchievements.find((a) => a.id === achievementId)
                 if (targetAchievement) {
                   setSelectedAchievementForReview(achievementId)

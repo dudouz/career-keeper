@@ -2,7 +2,7 @@ import { index, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-c
 import { resumeSections } from "./resumes"
 import { users } from "./users"
 
-// Brag model - GitHub contributions que podem ser revisados e usados no resume builder
+// Achievement model - GitHub contributions que podem ser revisados e usados no resume builder
 export const achievements = pgTable(
   "achievements",
   {
