@@ -9,11 +9,11 @@ import { usePathname } from "next/navigation"
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard" },
-  { href: "/dashboard/github", label: "GitHub Scan" },
-  { href: "/dashboard/brag-list", label: "Brag List" },
-  { href: "/dashboard/resume", label: "Resume" },
-  { href: "/dashboard/summary", label: "Summary" },
-  { href: "/dashboard/resume/compare", label: "Resume Compare" },
+  { href: "/dashboard/github", label: "GitHub Scanner" },
+  { href: "/dashboard/achievements", label: "Achievements" },
+  { href: "/dashboard/resume", label: "Resume Builder" },
+  // { href: "/dashboard/summary", label: "Summary" },
+  // { href: "/dashboard/resume/compare", label: "Resume Compare" },
   // { href: "/dashboard/settings", label: "Settings" },
 ]
 

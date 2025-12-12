@@ -7,22 +7,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import type { AchievementType } from "@/lib/db/types"
 import { Search } from "lucide-react"
-import type { BragType } from "@/lib/db/types"
 import type { ReviewStatusFilter, SortOrder } from "./types"
 
-interface BragFiltersProps {
+interface AchievementsFiltersProps {
   searchQuery: string
   reviewStatusFilter: ReviewStatusFilter
-  typeFilter: BragType | "all"
+  typeFilter: AchievementType | "all"
   sortOrder: SortOrder
   onSearchChange: (query: string) => void
   onReviewStatusChange: (filter: ReviewStatusFilter) => void
-  onTypeChange: (filter: BragType | "all") => void
+  onTypeChange: (filter: AchievementType | "all") => void
   onSortChange: (order: SortOrder) => void
 }
 
-export function BragFilters({
+export function AchievementsFilters({
   searchQuery,
   reviewStatusFilter,
   typeFilter,
@@ -31,7 +31,7 @@ export function BragFilters({
   onReviewStatusChange,
   onTypeChange,
   onSortChange,
-}: BragFiltersProps) {
+}: AchievementsFiltersProps) {
   return (
     <Card>
       <CardContent className="pt-6">
@@ -41,7 +41,7 @@ export function BragFilters({
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="Search brags..."
+              placeholder="Search achievements..."
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               className="pl-9"
@@ -91,4 +91,3 @@ export function BragFilters({
     </Card>
   )
 }
-

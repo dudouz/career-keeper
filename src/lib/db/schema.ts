@@ -9,10 +9,10 @@ export { comparisonHistory, comparisons } from "./schemas/comparisons"
 
 export { githubContributions } from "./schemas/github"
 
-export { brags } from "./schemas/brags"
+export { achievements } from "./schemas/achievements"
 
 // Import tables for relations (not exported)
-import { brags } from "./schemas/brags"
+import { achievements } from "./schemas/achievements"
 import { comparisonHistory, comparisons } from "./schemas/comparisons"
 import { githubContributions } from "./schemas/github"
 import { resumes, resumeSections, resumeVersions } from "./schemas/resumes"
@@ -22,7 +22,7 @@ import { sessions, users, userSessions } from "./schemas/users"
 export const usersRelations = relations(users, ({ many }) => ({
   resumes: many(resumes),
   githubContributions: many(githubContributions),
-  brags: many(brags),
+  achievements: many(achievements),
   sessions: many(sessions),
   userSessions: many(userSessions),
 }))
@@ -41,16 +41,16 @@ export const resumeSectionsRelations = relations(resumeSections, ({ one, many })
     fields: [resumeSections.resumeId],
     references: [resumes.id],
   }),
-  brags: many(brags),
+  achievements: many(achievements),
 }))
 
-export const bragsRelations = relations(brags, ({ one }) => ({
+export const achievementsRelations = relations(achievements, ({ one }) => ({
   user: one(users, {
-    fields: [brags.userId],
+    fields: [achievements.userId],
     references: [users.id],
   }),
   resumeSection: one(resumeSections, {
-    fields: [brags.resumeSectionId],
+    fields: [achievements.resumeSectionId],
     references: [resumeSections.id],
   }),
 }))

@@ -1,13 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertCircle, Check, FileText, Sparkles } from "lucide-react"
-import type { BragStats } from "./types"
+import type { AchievementsStats } from "./types"
 
-interface BragStatsProps {
-  stats: BragStats
+interface AchievementsStatsProps {
+  stats: AchievementsStats
   selectedCount: number
 }
 
-export function BragStats({ stats, selectedCount }: BragStatsProps) {
+export function AchievementsStats({ stats, selectedCount }: AchievementsStatsProps) {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
       <Card>
@@ -68,4 +68,3 @@ export function BragStats({ stats, selectedCount }: BragStatsProps) {
     </div>
   )
 }
-

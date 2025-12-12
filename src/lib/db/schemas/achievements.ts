@@ -3,8 +3,8 @@ import { resumeSections } from "./resumes"
 import { users } from "./users"
 
 // Brag model - GitHub contributions que podem ser revisados e usados no resume builder
-export const brags = pgTable(
-  "brags",
+export const achievements = pgTable(
+  "achievements",
   {
     id: uuid("id").defaultRandom().primaryKey(),
     userId: uuid("user_id")
@@ -38,9 +38,9 @@ export const brags = pgTable(
     reviewedAt: timestamp("reviewed_at"), // Quando foi revisado
   },
   (table) => [
-    index("brags_user_id_index").on(table.userId),
-    index("brags_review_status_index").on(table.reviewStatus),
-    index("brags_github_unique_index").on(table.userId, table.githubId, table.githubType),
+    index("achievements_user_id_index").on(table.userId),
+    index("achievements_review_status_index").on(table.reviewStatus),
+    index("achievements_github_unique_index").on(table.userId, table.githubId, table.githubType),
   ]
 )
 

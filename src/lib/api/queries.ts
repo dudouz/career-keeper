@@ -5,8 +5,8 @@
 
 import { PAGINATION } from "@/lib/constants"
 import type {
-  BragReviewStatus,
-  BragType,
+  AchievementReviewStatus,
+  AchievementType,
   GitHubContributionData,
   Resume,
   ResumeContent,
@@ -57,6 +57,13 @@ export const queryKeys = {
       [...queryKeys.brags.all, "list", filters] as const,
     stats: () => [...queryKeys.brags.all, "stats"] as const,
     detail: (id: string) => [...queryKeys.brags.all, "detail", id] as const,
+  },
+  // Achievements
+  achievements: {
+    all: ["achievements"] as const,
+    stats: () => [...queryKeys.achievements.all, "stats"] as const,
+    list: (filters?: { reviewStatus?: string; type?: string; page?: number; pageSize?: number }) =>
+      [...queryKeys.achievements.all, "list", filters] as const,
   },
 } as const
 
@@ -495,24 +502,24 @@ export function useReprocessResumeMutation() {
 }
 
 // =============================================================================
-// BRAGS QUERIES
+// ACHIEVEMENTS QUERIES
 // =============================================================================
 
 /**
- * Fetch brags with optional filters and pagination
+ * Fetch achievements with optional filters and pagination
  */
-export function useBragsQuery(
+export function useAchievementsQuery(
   options?: Omit<
     UseQueryOptions<{
-      brags: Array<{
+      achievements: Array<{
         id: string
-        type: BragType
+        type: AchievementType
         title: string
         description?: string | null
         date: Date
         repository: string
         url: string
-        reviewStatus: BragReviewStatus
+        reviewStatus: AchievementReviewStatus
         relevance?: number | null
         resumeSectionId?: string | null
         techTags?: string[] | null
@@ -525,13 +532,19 @@ export function useBragsQuery(
     }>,
     "queryKey" | "queryFn"
   > & {
-    reviewStatus?: BragReviewStatus
-    type?: BragType
+    reviewStatus?: AchievementReviewStatus
+    type?: AchievementType
     page?: number
     pageSize?: number
   }
 ) {
-  const { reviewStatus, type, page = PAGINATION.DEFAULT_PAGE, pageSize = PAGINATION.DEFAULT_PAGE_SIZE, ...queryOptions } = options || {}
+  const {
+    reviewStatus,
+    type,
+    page = PAGINATION.DEFAULT_PAGE,
+    pageSize = PAGINATION.DEFAULT_PAGE_SIZE,
+    ...queryOptions
+  } = options || {}
 
   return useQuery({
     queryKey: queryKeys.brags.list({ reviewStatus, type, page, pageSize }),
@@ -555,20 +568,20 @@ export function useBragsQuery(
 }
 
 /**
- * Fetch brag statistics
+ * Fetch achievement statistics
  */
-export function useBragStatsQuery(
+export function useAchievementStatsQuery(
   options?: Omit<
     UseQueryOptions<{ pending: number; reviewed: number; archived: number; total: number }>,
     "queryKey" | "queryFn"
   >
 ) {
   return useQuery({
-    queryKey: queryKeys.brags.stats(),
+    queryKey: queryKeys.achievements.stats(),
     queryFn: async () => {
-      const response = await fetch("/api/brags/stats")
+      const response = await fetch("/api/achievements/stats")
       if (!response.ok) {
-        throw new Error("Failed to fetch brag stats")
+        throw new Error("Failed to fetch achievement stats")
       }
       return response.json()
     },
@@ -577,24 +590,24 @@ export function useBragStatsQuery(
 }
 
 // =============================================================================
-// BRAGS MUTATIONS
+// ACHIEVEMENTS MUTATIONS
 // =============================================================================
 
 /**
  * Update brag review
  */
-export function useUpdateBragReviewMutation() {
+export function useUpdateAchievementReviewMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async (params: {
-      bragId: string
+      achievementId: string
       relevance?: number
       resumeSectionId?: string | null
       techTags?: string[]
       customDescription?: string | null
     }) => {
-      const response = await fetch(`/api/brags/${params.bragId}`, {
+      const response = await fetch(`/api/achievements/${params.achievementId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -607,51 +620,51 @@ export function useUpdateBragReviewMutation() {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || "Failed to update brag review")
+        throw new Error(error.error || "Failed to update achievement review")
       }
 
       return response.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.brags.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.achievements.all })
     },
   })
 }
 
 /**
- * Archive a brag
+ * Archive a achievement
  */
-export function useArchiveBragMutation() {
+export function useArchiveAchievementMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (bragId: string) => {
-      const response = await fetch(`/api/brags/${bragId}`, {
+    mutationFn: async (achievementId: string) => {
+      const response = await fetch(`/api/achievements/${achievementId}`, {
         method: "DELETE",
       })
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || "Failed to archive brag")
+        throw new Error(error.error || "Failed to archive achievement")
       }
 
       return response.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.brags.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.achievements.all })
     },
   })
 }
 
 /**
- * Unarchive a brag
+ * Unarchive a achievement
  */
-export function useUnarchiveBragMutation() {
+export function useUnarchiveAchievementMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (bragId: string) => {
-      const response = await fetch(`/api/brags/${bragId}`, {
+    mutationFn: async (achievementId: string) => {
+      const response = await fetch(`/api/achievements/${achievementId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ unarchive: true }),
@@ -659,32 +672,32 @@ export function useUnarchiveBragMutation() {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || "Failed to unarchive brag")
+        throw new Error(error.error || "Failed to unarchive achievement")
       }
 
       return response.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.brags.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.achievements.all })
     },
   })
 }
 
 /**
- * Bulk update brags
+ * Bulk update achievements
  */
-export function useBulkUpdateBragsMutation() {
+export function useBulkUpdateAchievementsMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async (params: {
-      bragIds: string[]
+      achievementIds: string[]
       relevance?: number
       resumeSectionId?: string | null
       techTags?: string[]
       reviewStatus?: "pending" | "reviewed" | "archived"
     }) => {
-      const response = await fetch("/api/brags/bulk", {
+      const response = await fetch("/api/achievements/bulk", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(params),
@@ -692,13 +705,13 @@ export function useBulkUpdateBragsMutation() {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || "Failed to update brags")
+        throw new Error(error.error || "Failed to update achievements")
       }
 
       return response.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.brags.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.achievements.all })
     },
   })
 }
