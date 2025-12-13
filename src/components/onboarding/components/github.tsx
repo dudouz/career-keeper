@@ -7,11 +7,7 @@ import { Button } from "@/components/ui/button"
 import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { CheckCircle2, Github, Loader2 } from "lucide-react"
-import {
-  useConnectGitHubMutation,
-  useGitHubStatusQuery,
-  useScanGitHubContributionsMutation,
-} from "@/lib/api/queries"
+import { useConnectGitHubMutation, useGitHubStatusQuery } from "@/lib/api/queries"
 import { githubTokenSchema, type GitHubTokenFormData } from "../onboarding-schema"
 
 interface GithubOnboardingProps {
@@ -28,7 +24,6 @@ export function GithubOnboarding({ completedSteps, onSuccess, onSkip }: GithubOn
 
   // Mutations
   const connectMutation = useConnectGitHubMutation()
-  const scanMutation = useScanGitHubContributionsMutation()
 
   // Form setup
   const {
@@ -45,16 +40,8 @@ export function GithubOnboarding({ completedSteps, onSuccess, onSkip }: GithubOn
 
     connectMutation.mutate(data.token, {
       onSuccess: () => {
-        // Scan contributions after connecting
-        scanMutation.mutate(undefined, {
-          onSuccess: () => {
-            reset()
-            onSuccess()
-          },
-          onError: (error) => {
-            setGithubError(error instanceof Error ? error.message : "Failed to scan GitHub")
-          },
-        })
+        reset()
+        onSuccess()
       },
       onError: (error) => {
         setGithubError(error instanceof Error ? error.message : "Failed to connect GitHub")
@@ -62,7 +49,7 @@ export function GithubOnboarding({ completedSteps, onSuccess, onSkip }: GithubOn
     })
   }
 
-  const isConnecting = connectMutation.isPending || scanMutation.isPending
+  const isConnecting = connectMutation.isPending
 
   return (
     <>
@@ -82,7 +69,7 @@ export function GithubOnboarding({ completedSteps, onSuccess, onSkip }: GithubOn
         <CardDescription>
           {completedSteps.has("github")
             ? "You can skip this step or reconnect with a different token"
-            : "We'll scan your repositories and contributions to build your achievements"}
+            : "Connect your GitHub account to enable contribution analysis"}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -93,8 +80,7 @@ export function GithubOnboarding({ completedSteps, onSuccess, onSkip }: GithubOn
               GitHub is already connected
             </div>
             <p className="text-xs">
-              Your contributions have been scanned. You can proceed to the next step or reconnect if
-              needed.
+              Your GitHub account is connected. You can proceed to the next step or reconnect if needed.
             </p>
           </div>
         )}
@@ -147,12 +133,12 @@ export function GithubOnboarding({ completedSteps, onSuccess, onSkip }: GithubOn
               {isConnecting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Connecting & Scanning...
+                  Connecting...
                 </>
               ) : completedSteps.has("github") ? (
                 "Reconnect GitHub"
               ) : (
-                "Connect & Scan GitHub"
+                "Connect GitHub"
               )}
             </Button>
             {completedSteps.has("github") && (

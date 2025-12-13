@@ -18,7 +18,7 @@ export class LLMClient {
     this.client = new OpenAI({
       apiKey: config.apiKey,
     })
-    this.model = config.model || "gpt-4-turbo-preview"
+    this.model = config.model || "gpt-5-nano" // MANDATORY: gpt-5-nano for all LLM calls
   }
 
   /**

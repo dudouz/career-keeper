@@ -11,12 +11,18 @@ export { githubContributions } from "./schemas/github"
 
 export { achievements } from "./schemas/achievements"
 
+export { userSnapshots } from "./schemas/snapshots"
+
+export { projects } from "./schemas/projects"
+
 // Import tables for relations (not exported)
 import { achievements } from "./schemas/achievements"
 import { comparisonHistory, comparisons } from "./schemas/comparisons"
 import { githubContributions } from "./schemas/github"
 import { resumes, resumeSections, resumeVersions } from "./schemas/resumes"
 import { sessions, users, userSessions } from "./schemas/users"
+import { userSnapshots } from "./schemas/snapshots"
+import { projects } from "./schemas/projects"
 
 // Relations - defined here to avoid circular dependencies
 export const usersRelations = relations(users, ({ many }) => ({
@@ -25,6 +31,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   achievements: many(achievements),
   sessions: many(sessions),
   userSessions: many(userSessions),
+  snapshots: many(userSnapshots),
+  projects: many(projects),
 }))
 
 export const resumesRelations = relations(resumes, ({ one, many }) => ({
@@ -86,4 +94,31 @@ export const userSessionsRelations = relations(userSessions, ({ one }) => ({
     fields: [userSessions.userId],
     references: [users.id],
   }),
+}))
+
+export const userSnapshotsRelations = relations(userSnapshots, ({ one }) => ({
+  user: one(users, {
+    fields: [userSnapshots.userId],
+    references: [users.id],
+  }),
+  resume: one(resumes, {
+    fields: [userSnapshots.resumeId],
+    references: [resumes.id],
+  }),
+  githubContribution: one(githubContributions, {
+    fields: [userSnapshots.githubContributionId],
+    references: [githubContributions.id],
+  }),
+  project: one(projects, {
+    fields: [userSnapshots.projectId],
+    references: [projects.id],
+  }),
+}))
+
+export const projectsRelations = relations(projects, ({ one, many }) => ({
+  user: one(users, {
+    fields: [projects.userId],
+    references: [users.id],
+  }),
+  snapshots: many(userSnapshots),
 }))

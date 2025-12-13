@@ -15,7 +15,7 @@ export const GITHUB = {
 
 // LLM/OpenAI Constants
 export const LLM = {
-  DEFAULT_MODEL: "gpt-4-turbo-preview",
+  DEFAULT_MODEL: "gpt-5-nano", // MANDATORY: gpt-5-nano for all LLM calls
   MAX_REPOS_IN_PROMPT: 5,
   MAX_RECENT_COMMITS: 10,
   MAX_DESCRIPTION_LENGTH: 200,

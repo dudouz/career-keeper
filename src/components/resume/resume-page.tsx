@@ -86,6 +86,19 @@ export function ResumePage() {
   }
 
   if (loading) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold">Resume Management</h1>
+        <Card>
+          <CardContent className="py-8 text-center">
+            <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
+            <p className="mt-2 text-muted-foreground">Loading resumes...</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <ConfirmationDialog
@@ -101,19 +114,6 @@ export function ResumePage() {
         onConfirm={handleDeleteConfirm}
       />
 
-      <h1 className="text-3xl font-bold">Resume Management</h1>
-        <Card>
-          <CardContent className="py-8 text-center">
-            <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
-            <p className="mt-2 text-muted-foreground">Loading resumes...</p>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Resume Management</h1>
         <p className="text-muted-foreground">Upload and manage your resumes</p>

@@ -1,10 +1,59 @@
 import { runChainOfDensityPipeline } from "@/lib/agents/chain-of-density/pipeline";
+import { runOptimizedPipeline } from "@/lib/agents/chain-of-density/optimized-pipeline";
 import { getGitHubContributions } from "@/lib/services/github";
 import type { GitHubContributionData } from "@/lib/db/types";
 import type {
   AnalyzeContributionsWithAgentParams,
   AnalyzeContributionsWithAgentResult,
 } from "./agents.types";
+
+// Helper: Filter contributions by repositories
+function filterContributionsByRepositories(
+  contributions: GitHubContributionData,
+  repositoryNames: string[]
+): GitHubContributionData {
+  if (!repositoryNames || repositoryNames.length === 0) {
+    return contributions;
+  }
+
+  // Normalize repository names (handle both "owner/repo" and "repo" formats)
+  const normalizedNames = repositoryNames.map(name => name.toLowerCase());
+
+  const filteredCommits = contributions.commits.filter((commit) =>
+    normalizedNames.some(name => commit.repository.toLowerCase().includes(name))
+  );
+
+  const filteredPRs = contributions.pullRequests.filter((pr) =>
+    normalizedNames.some(name => pr.repository.toLowerCase().includes(name))
+  );
+
+  const filteredIssues = contributions.issues.filter((issue) =>
+    normalizedNames.some(name => issue.repository.toLowerCase().includes(name))
+  );
+
+  const filteredReleases = contributions.releases.filter((release) =>
+    normalizedNames.some(name => release.repository.toLowerCase().includes(name))
+  );
+
+  // Filter repositories list
+  const filteredRepositories = contributions.repositories.filter((repo) =>
+    normalizedNames.some(name => repo.name.toLowerCase().includes(name))
+  );
+
+  return {
+    ...contributions,
+    repositories: filteredRepositories,
+    commits: filteredCommits,
+    pullRequests: filteredPRs,
+    issues: filteredIssues,
+    releases: filteredReleases,
+    totalContributions:
+      filteredCommits.length +
+      filteredPRs.length +
+      filteredIssues.length +
+      filteredReleases.length,
+  };
+}
 
 // Helper: Filter contributions by date period
 function filterContributionsByPeriod(
@@ -100,6 +149,11 @@ export async function analyzeContributionsWithAgent(
     contributions = result.contributions;
   }
 
+  // Filter by repositories if specified
+  if (options.repositoryNames && options.repositoryNames.length > 0) {
+    contributions = filterContributionsByRepositories(contributions, options.repositoryNames);
+  }
+
   // Filter by period if specified
   if (options.startDate || options.endDate || options.lastNDays) {
     contributions = filterContributionsByPeriod(contributions, {
@@ -109,9 +163,9 @@ export async function analyzeContributionsWithAgent(
     });
   }
 
-  // Run the Chain of Density pipeline
-  // Pipeline will retrieve API key from database at each step
-  const pipelineResult = await runChainOfDensityPipeline(
+  // Use optimized pipeline that consolidates all analysis in a single LLM call
+  // This dramatically reduces API calls from 3N+1 to just 1 call
+  const pipelineResult = await runOptimizedPipeline(
     contributions,
     userId,
     {
@@ -122,7 +176,15 @@ export async function analyzeContributionsWithAgent(
       includeRAGContext: options.includeRAGContext ?? true,
       contributionTypes: options.contributionTypes || ["pr", "commit"],
       context: options.context, // Pass custom context if provided
-      onProgress: options.onProgress, // Pass progress callback for streaming
+      onProgress: options.onProgress ? (progress) => {
+        // Map optimized progress to expected format
+        options.onProgress?.({
+          step: progress.step === "analyzing" ? "step1" : "consolidated",
+          current: progress.current,
+          total: progress.total,
+          message: progress.message,
+        });
+      } : undefined,
     }
   );
 

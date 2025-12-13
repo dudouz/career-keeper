@@ -16,6 +16,10 @@ export const users = pgTable("users", {
   subscriptionStatus: text("subscription_status").default("active"), // 'active', 'cancelled', 'past_due'
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
+  // Career data extracted from resume
+  yearsOfExperience: integer("years_of_experience"),
+  seniority: text("seniority"), // 'junior', 'mid', 'senior', 'lead', etc
+  focus: text("focus"), // 'backend', 'frontend', 'fullstack', 'devops', etc
 })
 
 // OAuth Accounts (for NextAuth)

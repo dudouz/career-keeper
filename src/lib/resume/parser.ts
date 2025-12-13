@@ -1,3 +1,4 @@
+import { LLM } from "@/lib/constants"
 import mammoth from "mammoth"
 import OpenAI from "openai"
 import { extractText } from "unpdf"
@@ -269,7 +270,7 @@ ${rawContent}
   const fullPrompt = prompt
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini", // Using GPT-4o-mini as a small, fast model
+    model: "gpt-5-nano", // MANDATORY: Using gpt-5-nano for all LLM calls
     messages: [
       {
         role: "system",
@@ -282,7 +283,7 @@ ${rawContent}
       },
     ],
     response_format: { type: "json_object" },
-    temperature: 0.3, // Lower temperature for more consistent parsing
+    temperature: LLM.TEMPERATURE.DEFAULT, // Lower temperature for more consistent parsing
   })
 
   const content = completion.choices[0].message.content || "{}"

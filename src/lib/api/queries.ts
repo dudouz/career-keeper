@@ -62,6 +62,19 @@ export const queryKeys = {
     list: (filters?: { reviewStatus?: string; type?: string; page?: number; pageSize?: number }) =>
       [...queryKeys.achievements.all, "list", filters] as const,
   },
+  // Snapshots
+  snapshots: {
+    all: ["snapshots"] as const,
+    list: () => [...queryKeys.snapshots.all, "list"] as const,
+    active: () => [...queryKeys.snapshots.all, "active"] as const,
+    detail: (id: string) => [...queryKeys.snapshots.all, "detail", id] as const,
+  },
+  // Projects
+  projects: {
+    all: ["projects"] as const,
+    list: () => [...queryKeys.projects.all, "list"] as const,
+    detail: (id: string) => [...queryKeys.projects.all, "detail", id] as const,
+  },
 } as const
 
 // =============================================================================
@@ -835,3 +848,335 @@ export function useAnalyzeContributionsWithAgentMutation() {
     },
   })
 }
+
+// =============================================================================
+// SNAPSHOTS QUERIES & MUTATIONS
+// =============================================================================
+
+/**
+ * Fetch active snapshot for user
+ */
+export function useActiveSnapshotQuery(
+  options?: Omit<UseQueryOptions<{ success: boolean; data: unknown }>, "queryKey" | "queryFn">
+) {
+  return useQuery({
+    queryKey: queryKeys.snapshots.active(),
+    queryFn: async () => {
+      const response = await fetch("/api/snapshots?active=true")
+      if (!response.ok) {
+        throw new Error("Failed to fetch active snapshot")
+      }
+      return response.json() as Promise<{ success: boolean; data: unknown }>
+    },
+    ...options,
+  })
+}
+
+/**
+ * Fetch snapshot history for user
+ */
+export function useSnapshotsQuery(
+  options?: Omit<UseQueryOptions<{ success: boolean; data: unknown[] }>, "queryKey" | "queryFn">
+) {
+  return useQuery({
+    queryKey: queryKeys.snapshots.list(),
+    queryFn: async () => {
+      const response = await fetch("/api/snapshots")
+      if (!response.ok) {
+        throw new Error("Failed to fetch snapshots")
+      }
+      return response.json() as Promise<{ success: boolean; data: unknown[] }>
+    },
+    ...options,
+  })
+}
+
+export function useSnapshotByIdQuery(
+  snapshotId: string,
+  options?: Omit<UseQueryOptions<{ success: boolean; data: unknown }>, "queryKey" | "queryFn">
+) {
+  return useQuery({
+    queryKey: queryKeys.snapshots.detail(snapshotId),
+    queryFn: async () => {
+      const response = await fetch(`/api/snapshots/${snapshotId}`)
+      if (!response.ok) {
+        throw new Error("Failed to fetch snapshot")
+      }
+      return response.json() as Promise<{ success: boolean; data: unknown }>
+    },
+    enabled: !!snapshotId,
+    ...options,
+  })
+}
+
+/**
+ * Generate GitHub analysis for a snapshot
+ */
+export function useGenerateSnapshotAnalysisMutation(
+  options?: UseMutationOptions<
+    { success: boolean; data: unknown },
+    Error,
+    { snapshotId: string }
+  >
+) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ snapshotId }) => {
+      const response = await fetch(`/api/snapshots/${snapshotId}/analyze`, {
+        method: "POST",
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to generate snapshot analysis")
+      }
+      return response.json() as Promise<{ success: boolean; data: unknown }>
+    },
+    onSuccess: (data, variables, context) => {
+      // Invalidate all snapshot queries to ensure UI updates
+      queryClient.invalidateQueries({ queryKey: queryKeys.snapshots.all })
+      // Call custom onSuccess if provided
+      if (options?.onSuccess) {
+        options.onSuccess(data, variables, context)
+      }
+    },
+    ...options,
+  })
+}
+
+/**
+ * Update a snapshot
+ */
+export function useUpdateSnapshotMutation(
+  options?: UseMutationOptions<
+    { success: boolean; data: unknown },
+    Error,
+    { snapshotId: string; title?: string; githubAnalysis?: unknown; isActive?: boolean }
+  >
+) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ snapshotId, ...updates }) => {
+      const response = await fetch(`/api/snapshots/${snapshotId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to update snapshot")
+      }
+      return response.json() as Promise<{ success: boolean; data: unknown }>
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.snapshots.all })
+    },
+    ...options,
+  })
+}
+
+// =============================================================================
+// PROJECTS QUERIES & MUTATIONS
+// =============================================================================
+
+export function useProjectsQuery(
+  options?: Omit<UseQueryOptions<{ success: boolean; data: unknown[] }>, "queryKey" | "queryFn">
+) {
+  return useQuery({
+    queryKey: queryKeys.projects.list(),
+    queryFn: async () => {
+      const response = await fetch("/api/projects")
+      if (!response.ok) {
+        throw new Error("Failed to fetch projects")
+      }
+      return response.json() as Promise<{ success: boolean; data: unknown[] }>
+    },
+    ...options,
+  })
+}
+
+export function useProjectQuery(
+  projectId: string,
+  options?: Omit<UseQueryOptions<{ success: boolean; data: unknown }>, "queryKey" | "queryFn">
+) {
+  return useQuery({
+    queryKey: queryKeys.projects.detail(projectId),
+    queryFn: async () => {
+      const response = await fetch(`/api/projects/${projectId}`)
+      if (!response.ok) {
+        throw new Error("Failed to fetch project")
+      }
+      return response.json() as Promise<{ success: boolean; data: unknown }>
+    },
+    enabled: !!projectId,
+    ...options,
+  })
+}
+
+export function useCreateProjectMutation(
+  options?: UseMutationOptions<
+    { success: boolean; data: unknown },
+    Error,
+    { repository?: unknown; repositories?: unknown[]; projectName?: string; notes?: string; projectNames?: Record<string, string> }
+  >
+) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ repository, repositories, projectName, notes, projectNames }) => {
+      const response = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ repository, repositories, projectName, notes, projectNames }),
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to create project")
+      }
+      return response.json() as Promise<{ success: boolean; data: unknown }>
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.all })
+    },
+    ...options,
+  })
+}
+
+export function useUpdateProjectMutation(
+  options?: UseMutationOptions<
+    { success: boolean; data: unknown },
+    Error,
+    { projectId: string; projectName?: string; notes?: string }
+  >
+) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ projectId, projectName, notes }) => {
+      const response = await fetch(`/api/projects/${projectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectName, notes }),
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to update project")
+      }
+      return response.json() as Promise<{ success: boolean; data: unknown }>
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(variables.projectId) })
+    },
+    ...options,
+  })
+}
+
+export function useDeleteProjectMutation(
+  options?: UseMutationOptions<
+    { success: boolean; message: string },
+    Error,
+    { projectId: string }
+  >
+) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ projectId }) => {
+      const response = await fetch(`/api/projects/${projectId}`, {
+        method: "DELETE",
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to delete project")
+      }
+      return response.json() as Promise<{ success: boolean; message: string }>
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.all })
+    },
+    ...options,
+  })
+}
+
+/**
+ * Deactivate/delete a snapshot
+ */
+export function useDeactivateSnapshotMutation(
+  options?: UseMutationOptions<
+    { success: boolean; message: string },
+    Error,
+    { snapshotId: string }
+  >
+) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ snapshotId }) => {
+      console.log("[useDeactivateSnapshotMutation] Deleting snapshot:", snapshotId)
+      const response = await fetch(`/api/snapshots/${snapshotId}`, {
+        method: "DELETE",
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        console.error("[useDeactivateSnapshotMutation] Error response:", error)
+        throw new Error(error.error || "Failed to deactivate snapshot")
+      }
+      const result = await response.json()
+      console.log("[useDeactivateSnapshotMutation] Success:", result)
+      return result as Promise<{ success: boolean; message: string }>
+    },
+    onSuccess: (data, variables, context) => {
+      console.log("[useDeactivateSnapshotMutation] Invalidating queries...")
+      queryClient.invalidateQueries({ queryKey: queryKeys.snapshots.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.snapshots.list() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.snapshots.active() })
+      // Call custom onSuccess if provided
+      if (options?.onSuccess) {
+        options.onSuccess(data, variables, context)
+      }
+    },
+    ...options,
+  })
+}
+
+/**
+ * Create a new snapshot
+ */
+export function useCreateSnapshotMutation(
+  options?: UseMutationOptions<
+    { success: boolean; data: unknown },
+    Error,
+    { resumeId?: string; githubContributionId?: string; triggerGitHubAnalysis?: boolean; scanGitHub?: boolean }
+  >
+) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (params: {
+      resumeId?: string
+      githubContributionId?: string
+      triggerGitHubAnalysis?: boolean
+      scanGitHub?: boolean
+    }) => {
+      const response = await fetch("/api/snapshots", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to create snapshot")
+      }
+
+      return response.json() as Promise<{ success: boolean; data: unknown }>
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.snapshots.all })
+    },
+    ...options,
+  })
+}
+

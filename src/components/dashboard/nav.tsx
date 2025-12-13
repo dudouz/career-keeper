@@ -16,10 +16,8 @@ import { usePathname } from "next/navigation"
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard" },
-  { href: "/dashboard/resume", label: "Resume Builder" },
-  // { href: "/dashboard/summary", label: "Summary" },
-  // { href: "/dashboard/resume/compare", label: "Resume Compare" },
-  // { href: "/dashboard/settings", label: "Settings" },
+  { href: "/dashboard/resume", label: "Resume" },
+  { href: "/dashboard/snapshots", label: "Snapshots" },
 ]
 
 const githubSubItems = [

@@ -18,7 +18,13 @@ import {
   useAnalyzeContributionsWithAgentMutation,
   useGitHubStatusQuery,
   useOpenAIKeyStatusQuery,
+  useActiveSnapshotQuery,
+  useGitHubContributionsQuery,
+  useSnapshotByIdQuery,
+  queryKeys,
 } from "@/lib/api/queries"
+import { RepositorySelector } from "@/components/projects/repository-selector"
+import type { GitHubContributionData } from "@/lib/db/types"
 import {
   OBJECTIVE_LABELS,
   ROLE_LABELS,
@@ -35,10 +41,11 @@ import {
   Copy,
   Download,
 } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
+import { useQueryClient } from "@tanstack/react-query"
 import { MarkdownRenderer } from "./markdown-renderer"
 
 const analysisFormSchema = z
@@ -86,9 +93,26 @@ const analysisFormSchema = z
 
 type AnalysisFormData = z.infer<typeof analysisFormSchema>
 
-export function AgentsPage() {
+interface AgentsPageProps {
+  snapshotId?: string // Optional snapshot ID from URL params
+}
+
+export function AgentsPage({ snapshotId: urlSnapshotId }: AgentsPageProps = {}) {
+  const queryClient = useQueryClient()
   const { data: githubStatus } = useGitHubStatusQuery()
   const { data: openaiKeyStatus } = useOpenAIKeyStatusQuery()
+  
+  // Use snapshot from URL if provided, otherwise use active snapshot
+  const { data: urlSnapshotData, isLoading: loadingUrlSnapshot } = useSnapshotByIdQuery(
+    urlSnapshotId || "",
+    { enabled: !!urlSnapshotId }
+  )
+  const { data: activeSnapshotData, isLoading: loadingActiveSnapshot } = useActiveSnapshotQuery({
+    enabled: !urlSnapshotId,
+  })
+  
+  const snapshotData = urlSnapshotId ? urlSnapshotData : activeSnapshotData
+  const loadingSnapshot = urlSnapshotId ? loadingUrlSnapshot : loadingActiveSnapshot
   const analyzeMutation = useAnalyzeContributionsWithAgentMutation()
 
   const [progress, setProgress] = useState<{
@@ -136,31 +160,145 @@ export function AgentsPage() {
     resolver: zodResolver(analysisFormSchema),
     defaultValues: {
       periodType: "all",
+      contributionTypes: ["pr", "commit"],
       seniority: "mid",
       role: "fullstack",
       objective: "general",
     },
   })
 
+  // Track if form is populated from snapshot
+  const [isFormPopulatedFromSnapshot, setIsFormPopulatedFromSnapshot] = useState(false)
+  
+  // Repository selection state
+  const [selectedRepositories, setSelectedRepositories] = useState<string[]>([])
+  
+  // Fetch GitHub contributions to get repositories (only if not in snapshot)
+  const { data: contributionsData } = useGitHubContributionsQuery({
+    enabled: !!githubStatus?.connected && !snapshotData?.data?.githubContributionsData,
+  })
+  
+  // Get repositories from GitHub scan data (either from snapshot or from contributions query)
+  // The repositories are already available from the initial GitHub scan
+  // Note: In snapshot, githubContributionsData is wrapped with metadata, so we need to access .data
+  const snapshotContributionsData = snapshotData?.data?.githubContributionsData as any
+  const rawContributionsData = snapshotContributionsData?.data || snapshotContributionsData || contributionsData?.contributions
+  const repositories: Array<{ name: string; description?: string; url: string; language?: string; stars?: number }> = 
+    rawContributionsData?.repositories || []
+  
+  // Store snapshot for reference in form
+  const snapshot = snapshotData?.data as any
+
+  // Load existing analysis from active snapshot if available and populate form with resume data
+  useEffect(() => {
+    if (!loadingSnapshot && snapshotData?.data) {
+      const snapshot = snapshotData.data as any
+      const githubAnalysis = snapshot.githubAnalysis as any
+      
+      // Populate form with resume data from snapshot
+      let hasData = false
+      if (snapshot.seniority) {
+        setValue("seniority", snapshot.seniority as Seniority)
+        hasData = true
+      }
+      if (snapshot.focus) {
+        // Map focus to role enum
+        const focusToRole: Record<string, Role> = {
+          backend: "backend",
+          frontend: "frontend",
+          fullstack: "fullstack",
+          devops: "devops",
+        }
+        const role = focusToRole[snapshot.focus.toLowerCase()]
+        if (role) {
+          setValue("role", role)
+          hasData = true
+        }
+      }
+      if (snapshot.yearsOfExperience) {
+        setValue("yearsOfExperience", snapshot.yearsOfExperience)
+        hasData = true
+      }
+      
+      // Set default values for required fields
+      setValue("periodType", "all")
+      setValue("contributionTypes", ["pr", "commit"])
+      
+      if (hasData) {
+        setIsFormPopulatedFromSnapshot(true)
+      }
+      
+      // Load existing analysis if available
+      console.log("[AgentsPage] Checking for githubAnalysis:", {
+        hasGithubAnalysis: !!githubAnalysis,
+        githubAnalysisType: typeof githubAnalysis,
+        githubAnalysisKeys: githubAnalysis ? Object.keys(githubAnalysis as any) : [],
+        githubAnalysis: githubAnalysis,
+      })
+      
+      if (githubAnalysis) {
+        // Handle both formats: direct object or wrapped object
+        let consolidatedReport = null
+        let metadata = null
+        
+        if (typeof githubAnalysis === 'object' && githubAnalysis !== null) {
+          const analysis = githubAnalysis as any
+          // Check if it's already in the correct format
+          if (analysis.consolidatedReport) {
+            consolidatedReport = analysis.consolidatedReport
+            metadata = analysis.metadata
+          } else if (analysis.overallSummary || analysis.aggregatedInsights) {
+            // It might be the consolidatedReport directly
+            consolidatedReport = analysis
+            metadata = { totalContributions: 0, processedContributions: 0, totalDurationMs: 0 }
+          }
+        }
+        
+        if (consolidatedReport) {
+          console.log("[AgentsPage] Loading analysis from snapshot:", { consolidatedReport, metadata })
+          setResults({
+            consolidatedReport,
+            metadata: metadata || {
+              totalContributions: consolidatedReport?.aggregatedInsights?.totalContributions || 0,
+              processedContributions: consolidatedReport?.aggregatedInsights?.totalContributions || 0,
+              totalDurationMs: 0,
+            },
+          })
+        } else {
+          console.warn("[AgentsPage] githubAnalysis exists but format is unexpected:", githubAnalysis)
+        }
+      }
+    }
+  }, [snapshotData, loadingSnapshot, setValue])
+
   const periodType = watch("periodType")
   const isConnected = githubStatus?.connected || false
   const hasOpenAIKey = openaiKeyStatus?.hasKey || false
 
   const onSubmit = async (data: AnalysisFormData) => {
+    console.log("[AgentsPage] Form submitted with data:", data)
     setIsStreaming(true);
     setProgress(null);
     setResults(null);
 
+    // Use snapshot-specific route if we have an active snapshot
+    const snapshotId = snapshotData?.data?.id as string | undefined
+    const apiRoute = snapshotId 
+      ? `/api/snapshots/${snapshotId}/analyze-stream`
+      : "/api/agents/analyze-contributions-stream"
+
     try {
-      const response = await fetch("/api/agents/analyze-contributions-stream", {
+      const response = await fetch(apiRoute, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...(snapshotId ? {} : { contributions: rawContributionsData }), // Only send contributions if not using snapshot route
           options: {
             maxCommits: 20,
             maxPRs: 10,
             includeRAGContext: true,
             contributionTypes: data.contributionTypes,
+            repositoryNames: selectedRepositories.length > 0 ? selectedRepositories : undefined,
             ...(data.periodType === "lastNDays" && data.lastNDays
               ? { lastNDays: data.lastNDays }
               : {}),
@@ -211,11 +349,20 @@ export function AgentsPage() {
                   message: data.message,
                 });
               } else if (data.type === "complete") {
-                setResults({
+                const analysisResult = {
                   consolidatedReport: data.data.consolidatedReport,
                   metadata: data.metadata,
-                });
+                };
+                setResults(analysisResult);
                 setIsStreaming(false);
+                
+                // Analysis is automatically saved to snapshot when using snapshot route
+                // Only need to invalidate queries to refresh UI
+                if (snapshotId) {
+                  console.log("[AgentsPage] Analysis saved to snapshot automatically via API");
+                  queryClient.invalidateQueries({ queryKey: queryKeys.snapshots.active() });
+                  queryClient.invalidateQueries({ queryKey: queryKeys.snapshots.detail(snapshotId) });
+                }
               } else if (data.type === "error") {
                 throw new Error(data.error);
               }
@@ -229,18 +376,19 @@ export function AgentsPage() {
       console.error("Streaming error:", error);
       setIsStreaming(false);
       // Fallback to regular mutation
-      const options: Parameters<typeof analyzeMutation.mutate>[0] = {
-        maxCommits: 20,
-        maxPRs: 10,
-        includeRAGContext: true,
-        contributionTypes: data.contributionTypes,
-        ...(data.periodType === "lastNDays" && data.lastNDays
-          ? { lastNDays: data.lastNDays }
-          : {}),
-        ...(data.periodType === "dateRange" && data.startDate && data.endDate
-          ? { startDate: data.startDate, endDate: data.endDate }
-          : {}),
-        context: {
+          const options: Parameters<typeof analyzeMutation.mutate>[0] = {
+            maxCommits: 20,
+            maxPRs: 10,
+            includeRAGContext: true,
+            contributionTypes: data.contributionTypes,
+            repositoryNames: selectedRepositories.length > 0 ? selectedRepositories : undefined,
+            ...(data.periodType === "lastNDays" && data.lastNDays
+              ? { lastNDays: data.lastNDays }
+              : {}),
+            ...(data.periodType === "dateRange" && data.startDate && data.endDate
+              ? { startDate: data.startDate, endDate: data.endDate }
+              : {}),
+            context: {
           seniority: data.seniority,
           role: data.role,
           objective: data.objective,
@@ -254,10 +402,19 @@ export function AgentsPage() {
       analyzeMutation.mutate(options, {
         onSuccess: (response) => {
           if (response.success && response.data) {
-            setResults({
+            const analysisResult = {
               consolidatedReport: response.data.consolidatedReport,
               metadata: response.metadata,
-            });
+            };
+            setResults(analysisResult);
+            
+            // Analysis is automatically saved to snapshot when using snapshot route
+            // Only need to invalidate queries to refresh UI
+            if (snapshotId) {
+              console.log("[AgentsPage] Analysis saved to snapshot automatically via API (fallback)");
+              queryClient.invalidateQueries({ queryKey: queryKeys.snapshots.active() });
+              queryClient.invalidateQueries({ queryKey: queryKeys.snapshots.detail(snapshotId) });
+            }
           }
         },
       });
@@ -377,20 +534,177 @@ export function AgentsPage() {
         </Alert>
       )}
 
+      {/* Repository Selector - Show before form if repositories are available from GitHub scan */}
+      {repositories.length > 0 && !results && (
+        <RepositorySelector
+          repositories={repositories}
+          selectedRepositories={selectedRepositories}
+          onSelectionChange={setSelectedRepositories}
+        />
+      )}
+      
+      {repositories.length === 0 && isConnected && !loadingSnapshot && !results && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            No repositories found. {snapshotContributionsData ? "The snapshot may not have repository data." : "Please scan your GitHub contributions first to load repositories."}
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {/* Debug info - remove in production */}
+      {process.env.NODE_ENV === "development" && (
+        <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
+          Debug: repositories={repositories.length}, hasSnapshotData={!!snapshotContributionsData}, hasRawData={!!rawContributionsData}, snapshotKeys={snapshotContributionsData ? Object.keys(snapshotContributionsData).join(", ") : "none"}
+        </div>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Form Section */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              <CardTitle>Analysis Configuration</CardTitle>
-            </div>
-            <CardDescription>
-              Configure the analysis parameters and context for personalized reports
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {/* Stats Cards or Form Section */}
+        {isFormPopulatedFromSnapshot && snapshot ? (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <CardTitle>Analysis Context</CardTitle>
+              </div>
+              <CardDescription>
+                Using data extracted from your resume
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 md:grid-cols-2">
+                {snapshot.seniority && (
+                  <Card className="bg-muted/50">
+                    <CardContent className="pt-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Seniority</p>
+                          <p className="text-lg font-semibold capitalize">{snapshot.seniority}</p>
+                        </div>
+                        <Badge variant="outline">From Resume</Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+                {snapshot.focus && (
+                  <Card className="bg-muted/50">
+                    <CardContent className="pt-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Role</p>
+                          <p className="text-lg font-semibold capitalize">{snapshot.focus}</p>
+                        </div>
+                        <Badge variant="outline">From Resume</Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+                {snapshot.yearsOfExperience && (
+                  <Card className="bg-muted/50">
+                    <CardContent className="pt-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Experience</p>
+                          <p className="text-lg font-semibold">{snapshot.yearsOfExperience} years</p>
+                        </div>
+                        <Badge variant="outline">From Resume</Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+              
+              <form 
+                onSubmit={handleSubmit(
+                  onSubmit,
+                  (errors) => {
+                    console.error("[AgentsPage] Form validation errors:", errors)
+                    alert(`Form validation failed: ${JSON.stringify(errors)}`)
+                  }
+                )} 
+                className="space-y-4 mt-4"
+              >
+                <div>
+                  <Label>Objective</Label>
+                  <Select
+                    value={watch("objective")}
+                    onValueChange={(value) => setValue("objective", value as Objective)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(OBJECTIVE_LABELS).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {watch("objective") === "job_application" && (
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="targetJobTitle">Target Job Title (Optional)</Label>
+                      <Input
+                        id="targetJobTitle"
+                        placeholder="Senior Backend Engineer at Google"
+                        {...register("targetJobTitle")}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="targetCompany">Target Company (Optional)</Label>
+                      <Input
+                        id="targetCompany"
+                        placeholder="Google"
+                        {...register("targetCompany")}
+                      />
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <Label htmlFor="customInstructions">Custom Instructions (Optional)</Label>
+                  <Textarea
+                    id="customInstructions"
+                    placeholder="Emphasize distributed systems, scalability, and high-traffic experience..."
+                    rows={3}
+                    {...register("customInstructions")}
+                  />
+                </div>
+                <Button 
+                  type="submit" 
+                  disabled={analyzeMutation.isPending || isStreaming} 
+                  className="w-full"
+                  onClick={(e) => {
+                    console.log("[AgentsPage] Button clicked, form values:", {
+                      periodType: watch("periodType"),
+                      contributionTypes: watch("contributionTypes"),
+                      seniority: watch("seniority"),
+                      role: watch("role"),
+                      objective: watch("objective"),
+                    })
+                  }}
+                >
+                  {(analyzeMutation.isPending || isStreaming) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {(analyzeMutation.isPending || isStreaming) ? "Analyzing..." : "Generate New Analysis"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <CardTitle>Analysis Configuration</CardTitle>
+              </div>
+              <CardDescription>
+                Configure the analysis parameters and context for personalized reports
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               {/* Period Filter */}
               <div className="space-y-4">
                 <Label>Time Period</Label>
@@ -490,10 +804,18 @@ export function AgentsPage() {
                 <Label>Analysis Context</Label>
 
                 <div>
-                  <Label htmlFor="seniority">Seniority Level</Label>
+                  <Label htmlFor="seniority">
+                    Seniority Level
+                    {isFormPopulatedFromSnapshot && snapshot?.seniority && (
+                      <Badge variant="outline" className="ml-2 text-xs">
+                        From Resume
+                      </Badge>
+                    )}
+                  </Label>
                   <Select
                     value={watch("seniority")}
                     onValueChange={(value) => setValue("seniority", value as Seniority)}
+                    disabled={isFormPopulatedFromSnapshot && !!snapshot?.seniority}
                   >
                     <SelectTrigger id="seniority">
                       <SelectValue />
@@ -509,10 +831,18 @@ export function AgentsPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="role">Role / Specialization</Label>
+                  <Label htmlFor="role">
+                    Role / Specialization
+                    {isFormPopulatedFromSnapshot && snapshot?.focus && (
+                      <Badge variant="outline" className="ml-2 text-xs">
+                        From Resume
+                      </Badge>
+                    )}
+                  </Label>
                   <Select
                     value={watch("role")}
                     onValueChange={(value) => setValue("role", value as Role)}
+                    disabled={isFormPopulatedFromSnapshot && !!snapshot?.focus}
                   >
                     <SelectTrigger id="role">
                       <SelectValue />
@@ -568,13 +898,21 @@ export function AgentsPage() {
                 )}
 
                 <div>
-                  <Label htmlFor="yearsOfExperience">Years of Experience (Optional)</Label>
+                  <Label htmlFor="yearsOfExperience">
+                    Years of Experience (Optional)
+                    {isFormPopulatedFromSnapshot && snapshot?.yearsOfExperience && (
+                      <Badge variant="outline" className="ml-2 text-xs">
+                        From Resume
+                      </Badge>
+                    )}
+                  </Label>
                   <Input
                     id="yearsOfExperience"
                     type="number"
                     min={0}
                     max={50}
                     placeholder="5"
+                    disabled={isFormPopulatedFromSnapshot && !!snapshot?.yearsOfExperience}
                     {...register("yearsOfExperience", { valueAsNumber: true })}
                   />
                 </div>
@@ -597,6 +935,7 @@ export function AgentsPage() {
             </form>
           </CardContent>
         </Card>
+        )}
 
         {/* Results Section */}
         <div className="space-y-6">

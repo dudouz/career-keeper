@@ -20,6 +20,8 @@ export interface AnalyzeContributionsWithAgentParams {
     lastNDays?: number; // Alternative to startDate/endDate (e.g., 30 for last 30 days)
     // Contribution type filters
     contributionTypes?: ("pr" | "commit" | "issue" | "release")[];
+    // Repository filters
+    repositoryNames?: string[]; // Filter contributions by repository names (e.g., ["owner/repo1", "owner/repo2"])
     // Analysis context (NEW)
     context?: AnalysisContext; // Customize prompts based on seniority, role, objective
     // Progress callback for streaming

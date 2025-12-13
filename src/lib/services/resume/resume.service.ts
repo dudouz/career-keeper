@@ -11,6 +11,13 @@ import type {
   ParsedResume,
 } from "./resume.types"
 
+// Career data extraction result
+interface CareerData {
+  yearsOfExperience: number | null
+  seniority: string | null
+  focus: string | null
+}
+
 // Helper: Ensure user exists in database
 async function ensureUserExists(
   userId: string,
@@ -66,6 +73,201 @@ async function parseFileBuffer(file: File): Promise<{ buffer: Buffer; fileType: 
   return { buffer, fileType }
 }
 
+/**
+ * Extract career data from parsed resume
+ * Calculates years of experience, determines seniority level, and identifies technical focus
+ */
+function extractCareerData(parsed: ParsedResume): CareerData {
+  // Calculate years of experience from sections
+  // Use the earliest start date to the latest end date (avoiding double-counting overlapping periods)
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth() + 1
+
+  let earliestStartYear: number | null = null
+  let earliestStartMonth: number | null = null
+  let latestEndYear = currentYear
+  let latestEndMonth = currentMonth
+
+  for (const section of parsed.sections) {
+    if (!section.start) continue
+
+    const startMatch = section.start.match(/^(\d{4})-(\d{2})$/)
+    if (!startMatch) continue
+
+    const startYear = parseInt(startMatch[1], 10)
+    const startMonth = parseInt(startMatch[2], 10)
+
+    // Track earliest start date
+    if (earliestStartYear === null || startYear < earliestStartYear || 
+        (startYear === earliestStartYear && startMonth < (earliestStartMonth || 13))) {
+      earliestStartYear = startYear
+      earliestStartMonth = startMonth
+    }
+
+    // Track latest end date
+    let endYear = currentYear
+    let endMonth = currentMonth
+
+    if (section.end) {
+      const endMatch = section.end.match(/^(\d{4})-(\d{2})$/)
+      if (endMatch) {
+        endYear = parseInt(endMatch[1], 10)
+        endMonth = parseInt(endMatch[2], 10)
+      }
+    }
+
+    if (endYear > latestEndYear || (endYear === latestEndYear && endMonth > latestEndMonth)) {
+      latestEndYear = endYear
+      latestEndMonth = endMonth
+    }
+  }
+
+  // Calculate total months from earliest start to latest end
+  let yearsOfExperience: number | null = null
+  if (earliestStartYear !== null && earliestStartMonth !== null) {
+    const totalMonths = (latestEndYear - earliestStartYear) * 12 + (latestEndMonth - earliestStartMonth) + 1
+    yearsOfExperience = Math.max(0, Math.round(totalMonths / 12))
+    
+    // Cap at reasonable maximum (e.g., 50 years) to catch parsing errors
+    if (yearsOfExperience > 50) {
+      console.warn(`[Resume Service] Calculated experience (${yearsOfExperience} years) seems too high, capping at 50`)
+      yearsOfExperience = 50
+    }
+  }
+
+  // Determine seniority based on years of experience and position titles
+  let seniority: string | null = null
+  if (yearsOfExperience !== null) {
+    const positionTitles = parsed.sections.map((s) => s.position.toLowerCase())
+    const hasLead = positionTitles.some((p) => p.includes("lead") || p.includes("principal") || p.includes("architect"))
+    const hasSenior = positionTitles.some((p) => p.includes("senior") || p.includes("sr"))
+    const hasMid = positionTitles.some((p) => p.includes("mid") || p.includes("intermediate"))
+    const hasJunior = positionTitles.some((p) => p.includes("junior") || p.includes("jr") || p.includes("intern"))
+
+    if (hasLead || yearsOfExperience >= 10) {
+      seniority = "lead"
+    } else if (hasSenior || yearsOfExperience >= 5) {
+      seniority = "senior"
+    } else if (hasMid || yearsOfExperience >= 2) {
+      seniority = "mid"
+    } else if (hasJunior || yearsOfExperience < 2) {
+      seniority = "junior"
+    } else {
+      // Default based on years only
+      if (yearsOfExperience >= 7) {
+        seniority = "senior"
+      } else if (yearsOfExperience >= 3) {
+        seniority = "mid"
+      } else {
+        seniority = "junior"
+      }
+    }
+  }
+
+  // Identify technical focus from technologies and descriptions
+  let focus: string | null = null
+  const allText = [
+    parsed.summary,
+    ...parsed.sections.map((s) => `${s.position} ${s.description}`),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+
+  // Technology keywords for different focuses
+  const backendKeywords = [
+    "backend",
+    "back-end",
+    "api",
+    "server",
+    "database",
+    "sql",
+    "postgresql",
+    "mysql",
+    "mongodb",
+    "redis",
+    "node",
+    "python",
+    "java",
+    "go",
+    "rust",
+    "microservices",
+    "rest",
+    "graphql",
+    "aws",
+    "azure",
+    "gcp",
+    "docker",
+    "kubernetes",
+  ]
+
+  const frontendKeywords = [
+    "frontend",
+    "front-end",
+    "react",
+    "vue",
+    "angular",
+    "javascript",
+    "typescript",
+    "html",
+    "css",
+    "sass",
+    "scss",
+    "ui",
+    "ux",
+    "design",
+    "responsive",
+    "mobile",
+    "ios",
+    "android",
+    "next",
+    "nuxt",
+  ]
+
+  const devopsKeywords = [
+    "devops",
+    "ci/cd",
+    "jenkins",
+    "github actions",
+    "gitlab",
+    "terraform",
+    "ansible",
+    "kubernetes",
+    "docker",
+    "aws",
+    "azure",
+    "gcp",
+    "infrastructure",
+    "monitoring",
+    "logging",
+  ]
+
+  const backendCount = backendKeywords.filter((kw) => allText.includes(kw)).length
+  const frontendCount = frontendKeywords.filter((kw) => allText.includes(kw)).length
+  const devopsCount = devopsKeywords.filter((kw) => allText.includes(kw)).length
+
+  if (backendCount > 0 && frontendCount > 0 && backendCount + frontendCount >= 3) {
+    focus = "fullstack"
+  } else if (devopsCount >= 2) {
+    focus = "devops"
+  } else if (backendCount > frontendCount && backendCount >= 2) {
+    focus = "backend"
+  } else if (frontendCount > backendCount && frontendCount >= 2) {
+    focus = "frontend"
+  } else if (backendCount > 0) {
+    focus = "backend"
+  } else if (frontendCount > 0) {
+    focus = "frontend"
+  }
+
+  return {
+    yearsOfExperience,
+    seniority,
+    focus,
+  }
+}
+
 // Helper: Store parsed resume data
 async function storeResumeData(
   userId: string,
@@ -117,6 +319,18 @@ async function storeResumeData(
     )
   }
 
+  // Extract and save career data
+  const careerData = extractCareerData(parsed)
+  await db
+    .update(users)
+    .set({
+      yearsOfExperience: careerData.yearsOfExperience,
+      seniority: careerData.seniority,
+      focus: careerData.focus,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId))
+
   // Fetch complete resume with sections
   const completeResume = await db.query.resumes.findFirst({
     where: (resumes, { eq }) => eq(resumes.id, newResume.id),
@@ -156,14 +370,17 @@ export async function uploadResume(
   // Check if user has OpenAI API key for LLM parsing
   const openaiApiKey = await getUserOpenAIKey(userId)
 
-  // Parse resume - use LLM if API key is available, otherwise fallback to regex
+  // Always use LLM parsing when API key is available for accurate data extraction
+  // This ensures correct extraction of years of experience, positions, and other career data
+  const shouldUseLLM = !!openaiApiKey
+
   const parsed = await parseResumeFile(buffer, file.type, {
-    useLLM: !!openaiApiKey,
+    useLLM: shouldUseLLM,
     openaiApiKey: openaiApiKey || undefined,
   })
 
   console.log(
-    `[Resume Service] Parsed resume using ${openaiApiKey ? "LLM" : "regex"} parser - found ${parsed.sections.length} sections`
+    `[Resume Service] Parsed resume using ${shouldUseLLM ? "LLM" : "regex"} parser (fileType: ${fileType}) - found ${parsed.sections.length} sections`
   )
 
   // Store file as base64
@@ -218,6 +435,18 @@ export async function updateResumeWithLLM(params: {
       }))
     )
   }
+
+  // Extract and update career data
+  const careerData = extractCareerData(parsed)
+  await db
+    .update(users)
+    .set({
+      yearsOfExperience: careerData.yearsOfExperience,
+      seniority: careerData.seniority,
+      focus: careerData.focus,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId))
 
   // Fetch updated resume with sections
   const updatedResume = await db.query.resumes.findFirst({

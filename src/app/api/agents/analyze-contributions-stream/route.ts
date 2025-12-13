@@ -46,8 +46,13 @@ export async function POST(req: NextRequest) {
           total: number;
           message: string;
         }) => {
-          const message = `data: ${JSON.stringify({ type: "progress", ...data })}\n\n`;
-          controller.enqueue(encoder.encode(message));
+          try {
+            const message = `data: ${JSON.stringify({ type: "progress", ...data })}\n\n`;
+            controller.enqueue(encoder.encode(message));
+          } catch (error) {
+            // Ignore errors if controller is already closed
+            console.warn("[Stream] Failed to send progress (controller may be closed):", error);
+          }
         };
 
         try {
@@ -62,29 +67,42 @@ export async function POST(req: NextRequest) {
           });
 
           // Send final result
-          const finalMessage = `data: ${JSON.stringify({
-            type: "complete",
-            data: {
-              consolidatedReport: result.consolidatedReport,
-              richAnalysis: result.richAnalysis,
-            },
-            metadata: {
-              ...result.metadata,
-              remaining: rateLimitResult.remaining,
-            },
-          })}\n\n`;
-          controller.enqueue(encoder.encode(finalMessage));
+          try {
+            const finalMessage = `data: ${JSON.stringify({
+              type: "complete",
+              data: {
+                consolidatedReport: result.consolidatedReport,
+                richAnalysis: result.richAnalysis,
+              },
+              metadata: {
+                ...result.metadata,
+                remaining: rateLimitResult.remaining,
+              },
+            })}\n\n`;
+            controller.enqueue(encoder.encode(finalMessage));
+          } catch (enqueueError) {
+            console.warn("[Stream] Failed to send final result (controller may be closed):", enqueueError);
+          }
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : "Failed to analyze contributions";
           
-          const errorData = `data: ${JSON.stringify({
-            type: "error",
-            error: errorMessage,
-          })}\n\n`;
-          controller.enqueue(encoder.encode(errorData));
+          try {
+            const errorData = `data: ${JSON.stringify({
+              type: "error",
+              error: errorMessage,
+            })}\n\n`;
+            controller.enqueue(encoder.encode(errorData));
+          } catch (enqueueError) {
+            console.warn("[Stream] Failed to send error (controller may be closed):", enqueueError);
+          }
         } finally {
-          controller.close();
+          try {
+            controller.close();
+          } catch (closeError) {
+            // Controller may already be closed, ignore
+            console.warn("[Stream] Controller already closed:", closeError);
+          }
         }
       },
     });

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -22,13 +22,12 @@ import { GithubOnboarding } from "./components/github"
 import { OpenAIOnboarding } from "./components/openai"
 import { ResumeOnboarding } from "./components/resume"
 
-type WizardStep = "github" | "openai" | "resume" | "results"
+type WizardStep = "github" | "openai" | "resume"
 
 const steps = [
   { id: "github" as WizardStep, title: "Connect GitHub", icon: Github },
   { id: "openai" as WizardStep, title: "OpenAI API Key", icon: Key },
   { id: "resume" as WizardStep, title: "Upload Resume", icon: Upload },
-  { id: "results" as WizardStep, title: "View Results", icon: Sparkles },
 ]
 
 export function OnboardingPage() {
@@ -39,6 +38,7 @@ export function OnboardingPage() {
   const { data: githubStatus, isLoading: loadingGithubStatus } = useGitHubStatusQuery()
   const { data: openaiKeyStatus, isLoading: loadingOpenAIStatus } = useOpenAIKeyStatusQuery()
   const { data: resumesData, isLoading: loadingResumes } = useResumesQuery()
+
 
   // Derive completed steps from query data
   const completedSteps = useMemo(() => {
@@ -75,8 +75,28 @@ export function OnboardingPage() {
     if (!completedSteps.has("resume")) {
       return "resume"
     }
-    return "results"
+    // All steps completed - will redirect to AI analysis
+    return "resume"
   }, [manualStep, completedSteps])
+
+  // Check if we're still loading status
+  const isCheckingStatus = loadingGithubStatus || loadingOpenAIStatus || loadingResumes
+
+  // Redirect to AI analysis when all steps are completed
+  const allStepsCompleted = useMemo(() => {
+    return completedSteps.has("github") && completedSteps.has("openai") && completedSteps.has("resume")
+  }, [completedSteps])
+
+  // Auto-redirect when all steps completed
+  useEffect(() => {
+    if (allStepsCompleted && !isCheckingStatus) {
+      // Small delay to show completion state
+      const timer = setTimeout(() => {
+        router.push("/dashboard/agents")
+      }, 1500)
+      return () => clearTimeout(timer)
+    }
+  }, [allStepsCompleted, isCheckingStatus, router])
 
   // Derive resumeId from query data
   const resumeId = useMemo(() => {
@@ -101,18 +121,16 @@ export function OnboardingPage() {
   }
 
   const handleResumeSuccess = () => {
-    setManualStep("results")
+    // After resume upload, redirect to AI analysis
+    router.push("/dashboard/agents")
   }
 
   const handleResumeSkip = () => {
-    setManualStep("results")
+    // Even if skipped, if all other steps are done, go to AI analysis
+    if (completedSteps.has("github") && completedSteps.has("openai")) {
+      router.push("/dashboard/agents")
+    }
   }
-
-  const handleFinish = () => {
-    router.push("/dashboard/achievements")
-  }
-
-  const isCheckingStatus = loadingGithubStatus || loadingOpenAIStatus || loadingResumes
 
   if (isCheckingStatus) {
     return (
@@ -142,7 +160,9 @@ export function OnboardingPage() {
           <p className="mt-2 text-muted-foreground">
             {completedSteps.size === 0
               ? "Let's get you set up in just 3 simple steps"
-              : `${completedSteps.size}/3 steps completed`}
+              : allStepsCompleted
+                ? "Setup complete! Redirecting to AI Analysis..."
+                : `${completedSteps.size}/3 steps completed`}
           </p>
         </div>
 
@@ -201,88 +221,18 @@ export function OnboardingPage() {
             <ResumeOnboarding onSuccess={handleResumeSuccess} onSkip={handleResumeSkip} />
           )}
 
-          {currentStep === "results" && (
-            <>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-6 w-6" />
-                  <CardTitle className="flex items-center gap-2">
-                    You're All Set! <PartyPopper className="h-5 w-5" />
-                  </CardTitle>
-                </div>
-                <CardDescription>Here's what you can do now</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Card className="border-2">
-                    <CardHeader>
-                      <CardTitle className="text-lg">Achievements</CardTitle>
-                      <CardDescription>View and export your achievements</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Button onClick={() => router.push("/dashboard/achievements")} className="w-full">
-                        View Achievements
-                      </Button>
-                    </CardContent>
-                  </Card>
-
-                  {resumeId && (
-                    <Card className="border-2">
-                      <CardHeader>
-                        <CardTitle className="text-lg">Resume Comparison</CardTitle>
-                        <CardDescription>AI-powered improvement suggestions</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <Button
-                          onClick={() => router.push("/dashboard/resume/compare")}
-                          className="w-full"
-                        >
-                          Compare Resume
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  <Card className="border-2">
-                    <CardHeader>
-                      <CardTitle className="text-lg">AI Summary</CardTitle>
-                      <CardDescription>Generate professional summaries</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Button
-                        onClick={() => router.push("/dashboard/summary")}
-                        className="w-full"
-                        variant="outline"
-                      >
-                        Generate Summary
-                      </Button>
-                    </CardContent>
-                  </Card>
-
-                  {!resumeId && (
-                    <Card className="border-2">
-                      <CardHeader>
-                        <CardTitle className="text-lg">Upload Resume</CardTitle>
-                        <CardDescription>Add it later for comparisons</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <Button
-                          onClick={() => router.push("/dashboard/resume")}
-                          className="w-full"
-                          variant="outline"
-                        >
-                          Upload Now
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-
-                <Button onClick={handleFinish} className="w-full" size="lg">
-                  Go to Dashboard
-                </Button>
-              </CardContent>
-            </>
+          {allStepsCompleted && (
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-6 w-6" />
+                <CardTitle className="flex items-center gap-2">
+                  Setup Complete! <PartyPopper className="h-5 w-5" />
+                </CardTitle>
+              </div>
+              <CardDescription>
+                Redirecting you to AI Analysis to generate your resume insights...
+              </CardDescription>
+            </CardHeader>
           )}
         </Card>
 
